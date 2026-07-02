@@ -88,5 +88,11 @@
         "Extingit": "Extinguished"
       }
     }
+  },
+  "issues": {
+    "service_degraded": {
+      "title": "Bombers de Catalunya can't reach the FeatureServer",
+      "description": "The integration has failed to query the Bombers FeatureServer several times in a row with an error suggesting its address or schema has changed: {error}. Wildfire data may be stale until this is fixed. Please open an issue on the integration's GitHub repository with these details."
+    }
   }
 }

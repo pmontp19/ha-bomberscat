@@ -1,4 +1,6 @@
-"""Sensor platform for bomberscat: aggregated wildfire sensors (Task 6+12).
+"""Sensor platform for bomberscat: aggregated wildfire sensors (Task 6+12),
+plus 2 of the 3 diagnostic entities (Task 13: `last_update`,
+`last_update_status`; the third, `service_connected`, is a binary_sensor).
 
 Implements the 6 aggregated sensors of docs/03-feature-spec.md §3.2-§3.7:
 `active_fires`, `nearest_fire_distance`, `nearest_fire_municipi`,
@@ -40,6 +42,7 @@ byte-for-byte, but if this sensor's spec is revisited we'd recommend
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -47,7 +50,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfLength
+from homeassistant.const import EntityCategory, UnitOfLength
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
@@ -56,7 +59,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import BomberscatConfigEntry
 from .const import DOMAIN
-from .coordinator import BomberscatDataUpdateCoordinator, BomberscatState
+from .coordinator import (
+    BomberscatDataUpdateCoordinator,
+    BomberscatState,
+    last_update_status,
+)
 from .icons import DEFAULT_FASE_ICON, DEFAULT_TIPUS_ICON, FASE_ICONS, TIPUS_ICONS
 from .models import Fase, Incident, Tipus
 from .pla_alfa import PlaAlfaCoordinator, PlaAlfaRisk
@@ -373,6 +380,58 @@ class FireRiskSensor(CoordinatorEntity[PlaAlfaCoordinator], SensorEntity):
         }
 
 
+class LastUpdateSensor(BomberscatEntity, SensorEntity):
+    """`sensor.bomberscat_last_update` (feature-spec §3.11, Task 13):
+    timestamp of the last *successful* sync.
+
+    `available` is overridden to always be `True` for the same reason as
+    `ServiceConnectedBinarySensor` (binary_sensor.py): this diagnostic
+    entity's job is to show the last known-good sync time even while the
+    service is currently down, not to disappear at that exact moment.
+    """
+
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "last_update")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> datetime | None:
+        state: BomberscatState = self.coordinator.data
+        return state.last_success
+
+
+class LastUpdateStatusSensor(BomberscatEntity, SensorEntity):
+    """`sensor.bomberscat_last_update_status` (feature-spec §3.11, Task 13):
+    `"success"` or `"error_<code>"` — see `coordinator.last_update_status()`
+    for the classification. `available` always `True`, same rationale as
+    `LastUpdateSensor` above.
+    """
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "last_update_status")
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def native_value(self) -> str:
+        state: BomberscatState = self.coordinator.data
+        return last_update_status(state)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: BomberscatConfigEntry,
@@ -389,5 +448,7 @@ async def async_setup_entry(
             FiresPerTipusSensor(coordinator, entry),
             TotalVehiclesSensor(coordinator, entry),
             FireRiskSensor(coordinator.pla_alfa, entry),
+            LastUpdateSensor(coordinator, entry),
+            LastUpdateStatusSensor(coordinator, entry),
         ]
     )

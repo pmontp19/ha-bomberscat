@@ -57,6 +57,16 @@ EVENT_FIRE_DETECTED = "bomberscat_fire_detected"
 EVENT_FIRE_RESOLVED = "bomberscat_fire_resolved"
 EVENT_PHASE_CHANGE = "bomberscat_phase_change"
 
+# Fired once (not every cycle) when the FeatureServer has failed with a
+# schema/URL-change signature (persistent 4xx/404) `DEGRADED_FAILURE_THRESHOLD`
+# times in a row — see coordinator.py and docs/04-architecture.md §9.
+EVENT_SERVICE_DEGRADED = "bomberscat_service_degraded"
+
+# Kept in sync manually with manifest.json's `issue_tracker`: used as the
+# repair issue's `learn_more_url` (Task 13) so a persistently-degraded
+# FeatureServer points the user at somewhere to report it.
+GITHUB_ISSUES_URL = "https://github.com/pmontp19/ha-bomberscat/issues"
+
 # ---------------------------------------------------------------------------
 # Config flow / options keys
 # ---------------------------------------------------------------------------

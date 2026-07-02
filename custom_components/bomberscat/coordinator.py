@@ -44,6 +44,24 @@ tracked in a previous cycle, which is impossible on the first refresh by
 construction (`base_incidents` is empty). We still suppress unconditionally
 (rather than relying on that invariant) so the intent is explicit and the
 code stays correct if the tracking logic ever changes.
+
+Service-degradation semantics (Task 13, docs/04-architecture.md §9 "URL
+canviada (404 persistent)"): `BomberscatState.consecutive_4xx_failures`
+counts *consecutive* failures whose `ArcgisClientError.kind` is in
+`_DEGRADATION_KINDS` (a 4xx response — the "schema/URL changed" signature).
+It resets to 0 both on a successful refresh *and* on a failure of a
+different kind (timeout/5xx/parse): a non-4xx failure in between two 404s
+means the run was not actually a consecutive sequence of that specific
+signature. Once the streak reaches `DEGRADED_FAILURE_THRESHOLD`, we fire
+`bomberscat_service_degraded` and raise a repair issue exactly once
+(`BomberscatState.degraded` gates re-firing every subsequent cycle); the
+repair issue is only cleared on an actual successful refresh, regardless of
+what interleaving failures reset the streak counter in between — the user
+should keep seeing the issue until the service demonstrably recovers, not
+just until the failure *type* changes. This bookkeeping only runs once
+there is a `previous` state to mutate (same first-refresh caveat as
+`last_error` above): a persistent-404 on the very first refresh instead
+surfaces as a normal `ConfigEntryNotReady` setup retry.
 """
 
 from __future__ import annotations
@@ -54,6 +72,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.dt import utcnow
 
@@ -75,6 +94,8 @@ from .const import (
     EVENT_FIRE_DETECTED,
     EVENT_FIRE_RESOLVED,
     EVENT_PHASE_CHANGE,
+    EVENT_SERVICE_DEGRADED,
+    GITHUB_ISSUES_URL,
 )
 from .geo import haversine_km
 from .models import Fase, Incident
@@ -86,6 +107,42 @@ if TYPE_CHECKING:
     from . import BomberscatConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
+
+# `ArcgisClientError.kind`s that count as the "schema/URL changed" failure
+# signature (docs/04-architecture.md §9, "URL canviada (404 persistent)").
+# Timeout/5xx/parse failures do not count: they are transient-network or
+# malformed-payload problems, not evidence the FeatureServer's address or
+# schema has moved.
+_DEGRADATION_KINDS = frozenset({"http_404", "http_4xx"})
+
+# Number of *consecutive* `_DEGRADATION_KINDS` failures before we consider
+# the service "degraded" (Task 13 / docs/05-implementation-plan.md Task 13).
+DEGRADED_FAILURE_THRESHOLD = 3
+
+# sensor.last_update_status (feature-spec §3.11) buckets: any
+# `ArcgisClientError.kind` not listed here (including a generic 4xx that
+# isn't specifically a 404, or a missing kind) normalizes to "unknown".
+_ERROR_STATUS_LABELS: dict[str, str] = {
+    "timeout": "timeout",
+    "http_404": "http_404",
+    "http_5xx": "http_5xx",
+    "parse": "parse",
+}
+
+
+def last_update_status(state: BomberscatState) -> str:
+    """`sensor.bomberscat_last_update_status` value (feature-spec §3.11).
+
+    `"success"` when the last refresh cycle completed without error;
+    otherwise `"error_<code>"`, derived from `state.last_error_kind` (itself
+    copied from `ArcgisClientError.kind` — see arcgis.py) and normalized via
+    `_ERROR_STATUS_LABELS` to the handful of buckets the resilience table
+    actually distinguishes.
+    """
+    if state.last_error is None:
+        return "success"
+    label = _ERROR_STATUS_LABELS.get(state.last_error_kind or "", "unknown")
+    return f"error_{label}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,8 +202,17 @@ class BomberscatState:
     cycle even when nothing else does, and comparing it would defeat
     `always_update=False` (docs/04-architecture.md §5) by making the
     coordinator think something changed on every single poll. We compare
-    `incidents` and `last_error` only — the two fields that actually affect
-    entity state.
+    `incidents`, `last_error` and `last_error_kind` only — the fields that
+    actually affect entity state (`consecutive_4xx_failures`/`degraded` are
+    pure bookkeeping for the degradation event/repair-issue, read directly
+    by `diagnostics.py` rather than any polled entity, so they are
+    deliberately excluded here).
+
+    `last_error_kind`/`consecutive_4xx_failures`/`degraded` (Task 13) track
+    the "persistent 404" resilience case (docs/04-architecture.md §9): see
+    `BomberscatDataUpdateCoordinator._async_update_data` for how they are
+    updated, and `last_update_status()` above for how `last_error_kind`
+    becomes `sensor.bomberscat_last_update_status`.
     """
 
     incidents: dict[str, Incident] = field(default_factory=dict)
@@ -154,11 +220,18 @@ class BomberscatState:
     last_data_act: datetime | None = None
     last_success: datetime | None = None
     last_error: str | None = None
+    last_error_kind: str | None = None
+    consecutive_4xx_failures: int = 0
+    degraded: bool = False
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, BomberscatState):
             return NotImplemented
-        return self.incidents == other.incidents and self.last_error == other.last_error
+        return (
+            self.incidents == other.incidents
+            and self.last_error == other.last_error
+            and self.last_error_kind == other.last_error_kind
+        )
 
     # Mutable dataclass with a custom __eq__: explicitly mark unhashable
     # (the default dataclass behavior for eq=True classes) rather than
@@ -348,6 +421,11 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
         # once computed never needs to be recomputed (docs/04-architecture
         # §5, "Càlcul de distància").
         self._distance_cache: dict[str, float] = {}
+        # One repair issue per config entry (Task 13): stable across
+        # reloads within the same entry so a second `async_create_issue`
+        # call while already degraded just updates it in place rather than
+        # duplicating.
+        self._degraded_issue_id = f"service_degraded_{entry.entry_id}"
 
     def distance_km(self, inc: Incident) -> float:
         """Distance in km from home to `inc`, cached per `act_num`."""
@@ -375,6 +453,23 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
                 # so diagnostics entities reading coordinator.data.last_error
                 # still see the fresh message.
                 previous.last_error = str(err)
+                previous.last_error_kind = err.kind
+                if err.kind in _DEGRADATION_KINDS:
+                    previous.consecutive_4xx_failures += 1
+                    if (
+                        not previous.degraded
+                        and previous.consecutive_4xx_failures
+                        >= DEGRADED_FAILURE_THRESHOLD
+                    ):
+                        previous.degraded = True
+                        self._mark_service_degraded(
+                            err, previous.consecutive_4xx_failures
+                        )
+                else:
+                    # Not the "URL/schema changed" signature: a timeout or
+                    # 5xx in between two 404s means the failures were not
+                    # actually consecutive occurrences of *that* signature.
+                    previous.consecutive_4xx_failures = 0
             raise UpdateFailed(str(err)) from err
 
         base_incidents = dict(previous.incidents) if previous else {}
@@ -411,10 +506,50 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
             for event_type, payload in events:
                 self.hass.bus.async_fire(event_type, payload)
 
+        if previous is not None and previous.degraded:
+            self._clear_service_degraded()
+
         return BomberscatState(
             incidents=incidents,
             resolved_at=resolved_at,
             last_data_act=last_data_act,
             last_success=now,
             last_error=None,
+            last_error_kind=None,
+            consecutive_4xx_failures=0,
+            degraded=False,
         )
+
+    def _mark_service_degraded(self, err: ArcgisClientError, count: int) -> None:
+        """Fire `bomberscat_service_degraded` once + raise a repair issue.
+
+        Only called the cycle `consecutive_4xx_failures` first reaches
+        `DEGRADED_FAILURE_THRESHOLD` (the `not previous.degraded` guard at
+        the call site keeps this to a single firing per degradation episode,
+        per docs/05-implementation-plan.md Task 13: "once, not every
+        cycle"). docs/04-architecture.md §9, "URL canviada (404 persistent)".
+        """
+        _LOGGER.warning(
+            "Bombers FeatureServer degraded: %d consecutive schema/URL-change"
+            " failures (%s)",
+            count,
+            err,
+        )
+        self.hass.bus.async_fire(
+            EVENT_SERVICE_DEGRADED,
+            {"consecutive_failures": count, "last_error": str(err)},
+        )
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            self._degraded_issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="service_degraded",
+            translation_placeholders={"error": str(err)},
+            learn_more_url=GITHUB_ISSUES_URL,
+        )
+
+    def _clear_service_degraded(self) -> None:
+        """Clear the repair issue on recovery (a successful refresh)."""
+        ir.async_delete_issue(self.hass, DOMAIN, self._degraded_issue_id)

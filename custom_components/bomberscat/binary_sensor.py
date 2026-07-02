@@ -1,5 +1,5 @@
 """Binary sensor platform for bomberscat (Task 8: `fire_nearby`; Task 10:
-`high_risk`).
+`high_risk`; Task 13: `service_connected`).
 
 Implements `binary_sensor.bomberscat_fire_nearby` (docs/03-feature-spec.md
 §3.9): `on` when any incident that passes the tracking filters is within the
@@ -51,6 +51,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
@@ -74,6 +75,7 @@ async def async_setup_entry(
         [
             BomberscatFireNearbyBinarySensor(entry),
             HighRiskBinarySensor(entry),
+            ServiceConnectedBinarySensor(entry),
         ]
     )
 
@@ -194,3 +196,42 @@ class HighRiskBinarySensor(CoordinatorEntity[PlaAlfaCoordinator], BinarySensorEn
             "nivell_text": risk.nivell_text,
             "municipi": risk.municipi,
         }
+
+
+class ServiceConnectedBinarySensor(
+    CoordinatorEntity[BomberscatDataUpdateCoordinator], BinarySensorEntity
+):
+    """`binary_sensor.bomberscat_service_connected` (feature-spec §3.11,
+    Task 13): `on` iff the last poll of the Bombers FeatureServer succeeded.
+
+    Availability is deliberately overridden to always be `True`: this is a
+    diagnostic entity whose entire purpose is to report *when the service is
+    down* (`CoordinatorEntity`'s default `available = coordinator
+    .last_update_success` would instead make it flip to `unavailable` at
+    exactly the moment it is supposed to show `off`).
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "service_connected"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, entry: BomberscatConfigEntry) -> None:
+        coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_service_connected"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name="Bombers de Catalunya",
+            manufacturer="Generalitat de Catalunya",
+            model="Incendis forestals",
+            entry_type=DeviceEntryType.SERVICE,
+        )
+
+    @property
+    def available(self) -> bool:
+        return True
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.last_update_success

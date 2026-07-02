@@ -49,7 +49,34 @@ _SleepFn = Callable[[float], Awaitable[None]]
 
 
 class ArcgisClientError(Exception):
-    """Raised when the ArcGIS FeatureServer request fails unrecoverably."""
+    """Raised when the ArcGIS FeatureServer request fails unrecoverably.
+
+    `status`/`kind` (Task 13, docs/04-architecture.md §9) let callers
+    classify a failure without parsing the message string — used by
+    `coordinator.py` to (a) derive `sensor.last_update_status` and (b) count
+    consecutive schema/URL-change-signature failures towards
+    `bomberscat_service_degraded`. `kind` is one of:
+
+    - `"http_404"` / `"http_4xx"`: a 4xx response (no retry attempted).
+      `404` gets its own bucket since it is the specific "URL changed"
+      signature the resilience table calls out; other 4xx codes are less
+      diagnostic on their own but still count as the same "not-a-network-
+      problem" class of failure.
+    - `"http_5xx"`: every retry attempt got a 5xx response.
+    - `"timeout"`: every retry attempt timed out or hit a network-level
+      error (connection refused, DNS, ...) — grouped together per the
+      architecture doc's "Timeout / xarxa" resilience-table row.
+    - `"parse"`: the response body was not valid JSON.
+    - `"unknown"` (default): anything else, including errors raised without
+      an explicit `kind` (e.g. plain `ArcgisClientError("boom")` in tests).
+    """
+
+    def __init__(
+        self, message: str, *, status: int | None = None, kind: str = "unknown"
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.kind = kind
 
 
 async def _default_sleep(seconds: float) -> None:
@@ -92,8 +119,11 @@ async def _fetch_page(
             async with session.get(query_url, params=params) as resp:
                 if 400 <= resp.status < 500:
                     body = await resp.text()
+                    kind = "http_404" if resp.status == 404 else "http_4xx"
                     raise ArcgisClientError(
-                        f"ArcGIS FeatureServer client error {resp.status}: {body}"
+                        f"ArcGIS FeatureServer client error {resp.status}: {body}",
+                        status=resp.status,
+                        kind=kind,
                     )
                 if resp.status >= 500:
                     body = await resp.text()
@@ -103,9 +133,18 @@ async def _fetch_page(
                         status=resp.status,
                         message=body,
                     )
-                return await resp.json(content_type=None)
+                try:
+                    return await resp.json(content_type=None)
+                except ValueError as err:
+                    # Invalid JSON body (docs/04-architecture.md §9: "Log,
+                    # conserva cache") — surface immediately, like 4xx: a
+                    # malformed response is not something a retry would fix.
+                    raise ArcgisClientError(
+                        f"ArcGIS FeatureServer returned invalid JSON: {err}",
+                        kind="parse",
+                    ) from err
         except ArcgisClientError:
-            # 4xx: no retry, surface immediately.
+            # 4xx / parse errors: no retry, surface immediately.
             raise
         except (TimeoutError, aiohttp.ClientError) as err:
             last_error = err
@@ -119,8 +158,17 @@ async def _fetch_page(
                 await sleep(RETRY_BACKOFFS_SECONDS[attempt])
                 continue
 
+    status: int | None = None
+    kind = "timeout"
+    if isinstance(last_error, aiohttp.ClientResponseError) and (
+        last_error.status is not None and last_error.status >= 500
+    ):
+        status = last_error.status
+        kind = "http_5xx"
     raise ArcgisClientError(
-        f"ArcGIS FeatureServer unreachable after {MAX_ATTEMPTS} attempts: {last_error}"
+        f"ArcGIS FeatureServer unreachable after {MAX_ATTEMPTS} attempts: {last_error}",
+        status=status,
+        kind=kind,
     ) from last_error
 
 

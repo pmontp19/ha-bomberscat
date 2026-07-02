@@ -249,3 +249,74 @@ async def test_4xx_raises_immediately_without_retry() -> None:
 
     assert call_count == 1
     assert sleeps == []
+
+
+# ---------------------------------------------------------------------------
+# ArcgisClientError.status/.kind classification (Task 13)
+# ---------------------------------------------------------------------------
+
+
+async def test_404_error_carries_http_404_kind_and_status() -> None:
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, status=404, body="not found", repeat=True)
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert exc_info.value.kind == "http_404"
+    assert exc_info.value.status == 404
+
+
+async def test_other_4xx_error_carries_http_4xx_kind() -> None:
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, status=400, body="bad request", repeat=True)
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert exc_info.value.kind == "http_4xx"
+    assert exc_info.value.status == 400
+
+
+async def test_exhausted_5xx_retries_carry_http_5xx_kind_and_status() -> None:
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, status=503, body="upstream error", repeat=True)
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert exc_info.value.kind == "http_5xx"
+    assert exc_info.value.status == 503
+
+
+async def test_network_error_carries_timeout_kind() -> None:
+    with aioresponses() as mocked:
+        mocked.get(
+            QUERY_URL_PATTERN,
+            exception=aiohttp.ClientConnectionError("boom"),
+            repeat=True,
+        )
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert exc_info.value.kind == "timeout"
+    assert exc_info.value.status is None
+
+
+async def test_invalid_json_carries_parse_kind_without_retry() -> None:
+    call_count = 0
+
+    def callback(url, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return CallbackResult(status=200, body="not valid json{")
+
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, callback=callback, repeat=True)
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert exc_info.value.kind == "parse"
+    assert call_count == 1
