@@ -105,6 +105,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from . import BomberscatConfigEntry
+    from .pla_alfa import PlaAlfaCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -417,6 +418,11 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
         )
         self._session = session
         self._resolved_grace_minutes = resolved_grace_minutes
+        # Companion Pla Alfa coordinator, attached by `async_setup_entry`
+        # right after both coordinators are built. Declared here (QA-wave
+        # fix) instead of being a dynamic attribute; TYPE_CHECKING-only
+        # import avoids a circular import with pla_alfa.py.
+        self.pla_alfa: PlaAlfaCoordinator | None = None
         # One repair issue per config entry (Task 13): stable across
         # reloads within the same entry so a second `async_create_issue`
         # call while already degraded just updates it in place rather than

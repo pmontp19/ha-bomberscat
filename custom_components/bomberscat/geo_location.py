@@ -41,6 +41,7 @@ requires a stable `unique_id`).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from homeassistant.components.geo_location import GeolocationEvent
@@ -75,23 +76,53 @@ async def async_setup_entry(
     """
     coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
     known: dict[str, BomberscatFireLocation] = {}
+    # Pending teardown tasks per act_num: an act_num popped from `known` is
+    # only fully gone once its removal task finishes. Re-adding the same
+    # act_num before that would call `async_add_entities` with the same
+    # unique_id while the old instance is still tearing down, so `_add_after`
+    # chains the add behind the pending removal.
+    pending_removals: dict[str, asyncio.Task[None]] = {}
+
+    def _add_entity(act_num: str) -> None:
+        if act_num not in coordinator.data.incidents or act_num in known:
+            return
+        entity = BomberscatFireLocation(coordinator, act_num)
+        known[act_num] = entity
+        async_add_entities([entity])
+
+    async def _add_after(removal: asyncio.Task[None], act_num: str) -> None:
+        try:
+            await removal
+        finally:
+            _add_entity(act_num)
 
     @callback
     def _sync_entities() -> None:
         current = set(coordinator.data.incidents)
-        new_act_nums = current - known.keys()
         stale_act_nums = known.keys() - current
-
-        if new_act_nums:
-            new_entities = [
-                BomberscatFireLocation(coordinator, act_num) for act_num in new_act_nums
-            ]
-            known.update((entity.act_num, entity) for entity in new_entities)
-            async_add_entities(new_entities)
 
         for act_num in stale_act_nums:
             entity = known.pop(act_num)
-            hass.async_create_task(entity.async_remove(force_remove=True))
+            task = entry.async_create_background_task(
+                hass,
+                entity.async_remove(force_remove=True),
+                name=f"bomberscat_remove_{act_num}",
+            )
+            pending_removals[act_num] = task
+            task.add_done_callback(
+                lambda _t, act=act_num: pending_removals.pop(act, None)
+            )
+
+        for act_num in current - known.keys():
+            removal = pending_removals.get(act_num)
+            if removal is not None and not removal.done():
+                entry.async_create_background_task(
+                    hass,
+                    _add_after(removal, act_num),
+                    name=f"bomberscat_readd_{act_num}",
+                )
+            else:
+                _add_entity(act_num)
 
     entry.async_on_unload(coordinator.async_add_listener(_sync_entities))
     _sync_entities()
@@ -118,6 +149,9 @@ class BomberscatFireLocation(CoordinatorEntity[BomberscatState], GeolocationEven
     ) -> None:
         super().__init__(coordinator)
         self.act_num = act_num
+        # Domain-prefixed (not entry_id-prefixed like other platforms): safe
+        # only while manifest.json enforces single_config_entry — revisit if
+        # multi-instance support is ever added.
         self._attr_unique_id = f"bomberscat_{act_num}"
         incident = coordinator.data.incidents[act_num]
         self._update_from_incident(incident)

@@ -263,30 +263,44 @@ async def test_options_flow_updates_entry_and_reloads(hass: HomeAssistant) -> No
 
 
 async def test_reconfigure_updates_location_and_radii(hass: HomeAssistant) -> None:
-    """Reconfigure moves the location/radii in place, same entry_id."""
+    """Reconfigure moves the location/radii in place, same entry_id.
+
+    Sets up the entry first (like the options-flow test) so the update
+    listener from `__init__.py` is registered — proving reconfigure causes
+    exactly ONE reload (the listener's), not two (QA-wave fix: the previous
+    `async_update_reload_and_abort` scheduled a second one on top).
+    """
     entry = make_config_entry(track_radius=100.0, alert_radius=30.0)
     entry.add_to_hass(hass)
     original_entry_id = entry.entry_id
 
-    result = await entry.start_reconfigure_flow(hass)
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "reconfigure"
-
     with patch(
-        "homeassistant.config_entries.ConfigEntries.async_reload"
-    ) as mock_reload:
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {
-                CONF_LOCATION: {
-                    CONF_LATITUDE: 42.0,
-                    CONF_LONGITUDE: 3.0,
-                    CONF_RADIUS: 20_000,
-                },
-                CONF_ALERT_RADIUS: 5,
-            },
-        )
+        "custom_components.bomberscat.coordinator.fetch_incidents",
+        AsyncMock(return_value=[]),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id) is True
         await hass.async_block_till_done()
+
+        result = await entry.start_reconfigure_flow(hass)
+        assert result["type"] is FlowResultType.FORM
+        assert result["step_id"] == "reconfigure"
+
+        with patch(
+            "homeassistant.config_entries.ConfigEntries.async_reload",
+            wraps=hass.config_entries.async_reload,
+        ) as mock_reload:
+            result = await hass.config_entries.flow.async_configure(
+                result["flow_id"],
+                {
+                    CONF_LOCATION: {
+                        CONF_LATITUDE: 42.0,
+                        CONF_LONGITUDE: 3.0,
+                        CONF_RADIUS: 20_000,
+                    },
+                    CONF_ALERT_RADIUS: 5,
+                },
+            )
+            await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"

@@ -12,12 +12,13 @@ so a single config entry per Home Assistant installation is enough for v1.
 There is no natural per-account unique id to key on (unlike cloud
 integrations with an API key), and letting the user create N entries for N
 different locations would need per-entry device/entity naming we don't have
-yet. We therefore abort on a second `user` step via
-``self._async_current_entries()`` (the same pattern used by
-``raspberry_pi`` and other single-instance core integrations) rather than
-``async_set_unique_id`` + ``_abort_if_unique_id_configured``. Moving the
-tracked location is handled by ``async_step_reconfigure``, not by creating a
-second entry.
+yet. We declare ``"single_config_entry": true`` in ``manifest.json``, which
+makes Home Assistant's flow manager abort a second ``user``-sourced flow
+with reason ``single_instance_allowed`` before ``async_step_user`` even
+runs (it does *not* affect ``async_step_reconfigure``, which is exempt from
+that check — see ``ConfigEntriesFlowManager.async_init`` in HA core).
+Moving the tracked location is handled by ``async_step_reconfigure``, not by
+creating a second entry.
 """
 
 from __future__ import annotations
@@ -61,6 +62,7 @@ from .const import (
     MAX_HIGH_RISK_THRESHOLD,
     MAX_SCAN_INTERVAL_MIN,
     MAX_TRACK_RADIUS_KM,
+    MIN_ALERT_RADIUS_KM,
     MIN_HIGH_RISK_THRESHOLD,
     MIN_SCAN_INTERVAL_MIN,
     MIN_TRACK_RADIUS_KM,
@@ -87,7 +89,7 @@ def _build_location_schema() -> vol.Schema:
                 CONF_ALERT_RADIUS, default=DEFAULT_ALERT_RADIUS_KM
             ): selector.NumberSelector(
                 selector.NumberSelectorConfig(
-                    min=1,
+                    min=MIN_ALERT_RADIUS_KM,
                     max=MAX_TRACK_RADIUS_KM,
                     step=1,
                     unit_of_measurement="km",
@@ -221,10 +223,13 @@ class BomberscatConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Step 1: location + the two tracking radii (§2 feature-spec)."""
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
+        """Step 1: location + the two tracking radii (§2 feature-spec).
 
+        No manual single-instance guard here: ``manifest.json``'s
+        ``single_config_entry: true`` makes the flow manager abort a second
+        attempt with reason ``single_instance_allowed`` before this step is
+        ever reached (see the module docstring).
+        """
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -294,7 +299,15 @@ class BomberscatConfigFlow(ConfigFlow, domain=DOMAIN):
                 _parse_location(user_input)
             )
             if not errors:
-                return self.async_update_reload_and_abort(
+                # Plain `async_update_entry` (not `async_update_reload_and_
+                # abort`): the latter unconditionally schedules its own
+                # reload on top of the one `_async_update_listener`
+                # (`__init__.py`) already fires for *any* data/options
+                # change, which meant every reconfigure ran two full
+                # unload/setup cycles back to back. `async_update_entry`
+                # fires the update listener exactly once when the data
+                # actually changed, so a single reload does the job.
+                self.hass.config_entries.async_update_entry(
                     entry,
                     data={
                         CONF_LATITUDE: latitude,
@@ -303,6 +316,7 @@ class BomberscatConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_ALERT_RADIUS: alert_radius_km,
                     },
                 )
+                return self.async_abort(reason="reconfigure_successful")
 
         suggested_values = user_input or {
             CONF_LOCATION: {

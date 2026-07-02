@@ -90,6 +90,7 @@ MAX_TRACK_RADIUS_KM = 200
 
 # Alert radius (km): which fires trigger binary_sensor.fire_nearby / events.
 DEFAULT_ALERT_RADIUS_KM = 30
+MIN_ALERT_RADIUS_KM = 1
 
 # Polling interval (minutes) for the Bombers live feed.
 DEFAULT_SCAN_INTERVAL_MIN = 5

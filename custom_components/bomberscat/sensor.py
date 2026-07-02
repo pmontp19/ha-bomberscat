@@ -52,18 +52,16 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import EntityCategory, UnitOfLength
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import BomberscatConfigEntry
-from .const import DOMAIN
 from .coordinator import (
     BomberscatDataUpdateCoordinator,
     BomberscatState,
     last_update_status,
 )
+from .entity import device_info
 from .icons import DEFAULT_FASE_ICON, DEFAULT_TIPUS_ICON, FASE_ICONS, TIPUS_ICONS
 from .models import Fase, Incident, Tipus
 from .pla_alfa import PlaAlfaCoordinator, PlaAlfaRisk
@@ -104,31 +102,14 @@ def _nearest(
     return min(incidents, key=coordinator.distance_km)
 
 
-def _device_info(entry: BomberscatConfigEntry) -> DeviceInfo:
-    """Shared `DeviceInfo` for every bomberscat entity (one device per entry).
-
-    Used by both `BomberscatEntity` (Bombers-backed sensors) and
-    `FireRiskSensor` (Pla-Alfa-backed, Task 10): the fire-risk entities
-    belong to the *same* HA device even though they poll a different
-    coordinator, since from the user's perspective this is all one
-    "Bombers de Catalunya" integration instance.
-    """
-    return DeviceInfo(
-        identifiers={(DOMAIN, entry.entry_id)},
-        name="Bombers de Catalunya",
-        manufacturer="Generalitat de Catalunya",
-        model="Incendis forestals",
-        entry_type=DeviceEntryType.SERVICE,
-    )
-
-
 class BomberscatEntity(CoordinatorEntity[BomberscatDataUpdateCoordinator]):
     """Base for all bomberscat sensor entities: shared device + naming.
 
     Mirrors the `BomberscatEntity` sketch in docs/04-architecture.md §7.
-    Kept local to this module (rather than a shared `entity.py`) because
-    this task may only touch `sensor.py`/`icons.py`/`tests/test_sensor.py`;
-    the `binary_sensor`/`geo_location` platforms define their own copy.
+    `device_info()` (shared with `binary_sensor.py` via `entity.py`) is the
+    only piece factored out to a common module — the rest (unique_id
+    scheme, translation_key wiring) differs enough per platform that a
+    shared base class wasn't worth the coupling.
     """
 
     _attr_has_entity_name = True
@@ -141,11 +122,8 @@ class BomberscatEntity(CoordinatorEntity[BomberscatDataUpdateCoordinator]):
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_{key}"
-        # No translations/*.json entries exist yet for entity keys (Task 14
-        # handles that); until then HA falls back to showing the key itself
-        # as the entity name, which is acceptable per this task's brief.
         self._attr_translation_key = key
-        self._attr_device_info = _device_info(entry)
+        self._attr_device_info = device_info(entry)
 
 
 class ActiveFiresSensor(BomberscatEntity, SensorEntity):
@@ -331,8 +309,8 @@ class FireRiskSensor(CoordinatorEntity[PlaAlfaCoordinator], SensorEntity):
 
     Backed by `PlaAlfaCoordinator`, not `BomberscatDataUpdateCoordinator` —
     hence it does not subclass `BomberscatEntity` (typed for the latter) —
-    but shares the same `DeviceInfo` (see `_device_info`) so it shows up
-    under the same "Bombers de Catalunya" device.
+    but shares the same `DeviceInfo` (see `entity.device_info`) so it shows
+    up under the same "Bombers de Catalunya" device.
 
     Availability follows `CoordinatorEntity`'s default (`coordinator
     .last_update_success`): when Pla Alfa is down (including a failed first
@@ -351,7 +329,7 @@ class FireRiskSensor(CoordinatorEntity[PlaAlfaCoordinator], SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_fire_risk"
-        self._attr_device_info = _device_info(entry)
+        self._attr_device_info = device_info(entry)
 
     @property
     def native_value(self) -> int | None:

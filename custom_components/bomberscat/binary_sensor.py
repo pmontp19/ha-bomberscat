@@ -53,14 +53,13 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import BomberscatConfigEntry
-from .const import CONF_HIGH_RISK_THRESHOLD, DEFAULT_HIGH_RISK_THRESHOLD, DOMAIN
+from .const import CONF_HIGH_RISK_THRESHOLD, DEFAULT_HIGH_RISK_THRESHOLD
 from .coordinator import BomberscatDataUpdateCoordinator, BomberscatState
+from .entity import device_info
 from .models import Incident
 from .pla_alfa import PlaAlfaCoordinator
 
@@ -93,13 +92,7 @@ class BomberscatFireNearbyBinarySensor(
         coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_fire_nearby"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="Bombers de Catalunya",
-            manufacturer="Generalitat de Catalunya",
-            model="Incendis forestals",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = device_info(entry)
 
     def _alerting_incidents(self) -> list[Incident]:
         """Tracked incidents that are both actively-phased and in alert range.
@@ -171,13 +164,7 @@ class HighRiskBinarySensor(CoordinatorEntity[PlaAlfaCoordinator], BinarySensorEn
         self._threshold = int(
             entry.options.get(CONF_HIGH_RISK_THRESHOLD, DEFAULT_HIGH_RISK_THRESHOLD)
         )
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="Bombers de Catalunya",
-            manufacturer="Generalitat de Catalunya",
-            model="Incendis forestals",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = device_info(entry)
 
     @property
     def is_on(self) -> bool | None:
@@ -220,13 +207,7 @@ class ServiceConnectedBinarySensor(
         coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_service_connected"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="Bombers de Catalunya",
-            manufacturer="Generalitat de Catalunya",
-            model="Incendis forestals",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = device_info(entry)
 
     @property
     def available(self) -> bool:
