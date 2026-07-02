@@ -41,11 +41,37 @@ _LOGGER = logging.getLogger(__name__)
 
 PAGE_SIZE = 2000
 
+# Hard cap on `fetch_incidents`' pagination loop: 20 pages * PAGE_SIZE rows =
+# 40k rows, far above the real dataset's size. Without this, a server that
+# always reports `exceededTransferLimit=true` (a live-service bug, or a
+# schema change we haven't accounted for) would make the loop paginate
+# forever, growing `raw_features` without bound until the process OOMs.
+MAX_PAGES = 20
+
+# Request-level timeout for every `session.get` call. Without an explicit
+# timeout, aiohttp defaults to a 300s total timeout *per attempt*; combined
+# with MAX_ATTEMPTS retries that is up to ~20 minutes before a hung
+# connection is ever reported as a failure.
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+
 # 1 initial attempt + up to 3 retries, with exponential backoff between them.
 RETRY_BACKOFFS_SECONDS: tuple[float, ...] = (1, 2, 4)
 MAX_ATTEMPTS = len(RETRY_BACKOFFS_SECONDS) + 1
 
+# Body text embedded in ArcgisClientError messages (4xx responses) is
+# truncated to this many characters: the raw body flows unbounded into the
+# Repairs UI placeholder and diagnostics, and 4xx bodies are sometimes full
+# HTML error pages.
+MAX_ERROR_BODY_CHARS = 200
+
 _SleepFn = Callable[[float], Awaitable[None]]
+
+
+def _truncate_body(body: str) -> str:
+    """Truncate an HTTP response body for safe embedding in an error message."""
+    if len(body) <= MAX_ERROR_BODY_CHARS:
+        return body
+    return f"{body[:MAX_ERROR_BODY_CHARS]}…"
 
 
 class ArcgisClientError(Exception):
@@ -87,6 +113,9 @@ def _since_where_clause(since: datetime) -> str:
     """Build the incremental `where` clause for `DATA_ACT > since`."""
     if since.tzinfo is not None:
         since = since.astimezone(UTC).replace(tzinfo=None)
+    # Truncation to whole seconds is deliberate: it slightly widens the
+    # re-fetch window rather than narrowing it, and `_dedupe_features` makes
+    # re-fetching an already-seen row harmless.
     timestamp = since.strftime("%Y-%m-%d %H:%M:%S")
     return f"DATA_ACT > TIMESTAMP '{timestamp}'"
 
@@ -116,12 +145,15 @@ async def _fetch_page(
     last_error: Exception | None = None
     for attempt in range(MAX_ATTEMPTS):
         try:
-            async with session.get(query_url, params=params) as resp:
+            async with session.get(
+                query_url, params=params, timeout=REQUEST_TIMEOUT
+            ) as resp:
                 if 400 <= resp.status < 500:
                     body = await resp.text()
                     kind = "http_404" if resp.status == 404 else "http_4xx"
                     raise ArcgisClientError(
-                        f"ArcGIS FeatureServer client error {resp.status}: {body}",
+                        f"ArcGIS FeatureServer client error {resp.status}: "
+                        f"{_truncate_body(body)}",
                         status=resp.status,
                         kind=kind,
                     )
@@ -211,7 +243,7 @@ async def fetch_incidents(
 
     offset = 0
     raw_features: list[dict[str, Any]] = []
-    while True:
+    for _page in range(MAX_PAGES):
         data = await _fetch_page(
             session,
             where=where,
@@ -225,5 +257,18 @@ async def fetch_incidents(
         if not exceeded:
             break
         offset += PAGE_SIZE
+    else:
+        # Every one of MAX_PAGES pages reported exceededTransferLimit=true:
+        # either the dataset has genuinely exploded far beyond anything seen
+        # in practice, or the server is stuck always reporting the flag as
+        # true. Either way, continuing to paginate is not safe (unbounded
+        # memory growth) -- surface it as an error instead of looping
+        # forever.
+        raise ArcgisClientError(
+            f"ArcGIS FeatureServer still reports exceededTransferLimit after "
+            f"{MAX_PAGES} pages ({MAX_PAGES * PAGE_SIZE} rows); aborting to "
+            "avoid unbounded pagination",
+            kind="unknown",
+        )
 
     return [Incident.from_feature(f) for f in _dedupe_features(raw_features)]

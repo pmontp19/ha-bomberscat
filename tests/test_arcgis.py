@@ -10,6 +10,9 @@ import pytest
 from aioresponses import CallbackResult, aioresponses
 from custom_components.bomberscat.arcgis import (
     MAX_ATTEMPTS,
+    MAX_ERROR_BODY_CHARS,
+    MAX_PAGES,
+    REQUEST_TIMEOUT,
     RETRY_BACKOFFS_SECONDS,
     ArcgisClientError,
     _dedupe_features,
@@ -304,6 +307,22 @@ async def test_network_error_carries_timeout_kind() -> None:
     assert exc_info.value.status is None
 
 
+async def test_4xx_error_body_is_truncated() -> None:
+    long_body = "x" * 5000
+
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, status=400, body=long_body, repeat=True)
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    message = str(exc_info.value)
+    assert len(message) < len(long_body)
+    assert "x" * MAX_ERROR_BODY_CHARS in message
+    assert "x" * (MAX_ERROR_BODY_CHARS + 1) not in message
+    assert message.endswith("…")
+
+
 async def test_invalid_json_carries_parse_kind_without_retry() -> None:
     call_count = 0
 
@@ -320,3 +339,89 @@ async def test_invalid_json_carries_parse_kind_without_retry() -> None:
 
     assert exc_info.value.kind == "parse"
     assert call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# Pagination cap (unbounded-loop hardening)
+# ---------------------------------------------------------------------------
+
+
+async def test_pagination_stops_after_max_pages_when_always_exceeded() -> None:
+    """A server that always reports exceededTransferLimit=true must not hang
+    forever: fetch_incidents should give up after MAX_PAGES and raise."""
+    empty_but_exceeded = {
+        "type": "FeatureCollection",
+        "features": [],
+        "properties": {"exceededTransferLimit": True},
+    }
+    call_count = 0
+
+    def callback(url, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return CallbackResult(status=200, payload=empty_but_exceeded)
+
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, callback=callback, repeat=True)
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert call_count == MAX_PAGES
+    assert exc_info.value.kind == "unknown"
+
+
+async def test_pagination_succeeds_when_limit_stops_exactly_at_max_pages() -> None:
+    """The last page (MAX_PAGES-th) reporting exceededTransferLimit=false is
+    not an overflow: it should return normally with all pages' features."""
+    sample = _load("featureserver_sample.json")
+    one_feature = sample["features"][:1]
+    call_count = 0
+
+    def callback(url, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        exceeded = call_count < MAX_PAGES
+        return CallbackResult(
+            status=200,
+            payload={
+                "type": "FeatureCollection",
+                "features": one_feature,
+                "properties": {"exceededTransferLimit": exceeded},
+            },
+        )
+
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, callback=callback, repeat=True)
+        async with aiohttp.ClientSession() as session:
+            incidents = await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert call_count == MAX_PAGES
+    assert len(incidents) == 1
+
+
+# ---------------------------------------------------------------------------
+# Request timeout
+# ---------------------------------------------------------------------------
+
+
+async def test_fetch_page_passes_explicit_timeout() -> None:
+    """Every session.get call must pass an explicit timeout so a hung
+    connection cannot stall for aiohttp's 300s-per-attempt default."""
+    empty = _load("featureserver_empty.json")
+    captured_kwargs: dict = {}
+
+    real_get = aiohttp.ClientSession.get
+
+    def spy_get(self, url, **kwargs):
+        captured_kwargs.update(kwargs)
+        return real_get(self, url, **kwargs)
+
+    with aioresponses() as mocked:
+        mocked.get(QUERY_URL_PATTERN, payload=empty)
+        async with aiohttp.ClientSession() as session:
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(aiohttp.ClientSession, "get", spy_get)
+                await fetch_incidents(session, sleep=_noop_sleep)
+
+    assert captured_kwargs.get("timeout") is REQUEST_TIMEOUT

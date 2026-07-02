@@ -91,6 +91,33 @@ def test_com_fase_missing_key_maps_to_actiu() -> None:
     assert inc.fase == Fase.ACTIU
 
 
+def test_com_fase_padded_value_is_stripped_before_matching() -> None:
+    """A trailing/leading space (observed on the live FeatureServer) must not
+    misclassify a real phase value as unknown -> Actiu, which would silently
+    suppress bomberscat_phase_change events."""
+    feature = {
+        "geometry": {"type": "Point", "coordinates": [2.0, 41.0]},
+        "properties": {"ACT_NUM_ACTUACIO": "1", "COM_FASE": "Estabilitzat "},
+    }
+    inc = Incident.from_feature(feature)
+    assert inc.fase == Fase.ESTABILITZAT
+
+
+def test_com_fase_lowercase_value_falls_back_to_actiu_with_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Only whitespace-stripping is required; casing mismatches keep the
+    existing unknown-value fallback behavior (Actiu + a warning)."""
+    feature = {
+        "geometry": {"type": "Point", "coordinates": [2.0, 41.0]},
+        "properties": {"ACT_NUM_ACTUACIO": "1", "COM_FASE": "estabilitzat"},
+    }
+    with caplog.at_level("WARNING"):
+        inc = Incident.from_feature(feature)
+    assert inc.fase == Fase.ACTIU
+    assert any("COM_FASE" in record.message for record in caplog.records)
+
+
 def test_com_fase_unknown_value_maps_to_actiu() -> None:
     feature = {
         "geometry": {"type": "Point", "coordinates": [2.0, 41.0]},
@@ -98,6 +125,15 @@ def test_com_fase_unknown_value_maps_to_actiu() -> None:
     }
     inc = Incident.from_feature(feature)
     assert inc.fase == Fase.ACTIU
+
+
+def test_tal_cod_alarma2_padded_value_is_stripped_before_matching() -> None:
+    feature = {
+        "geometry": {"type": "Point", "coordinates": [2.0, 41.0]},
+        "properties": {"ACT_NUM_ACTUACIO": "1", "TAL_COD_ALARMA2": " VU"},
+    }
+    inc = Incident.from_feature(feature)
+    assert inc.tipus == Tipus.URBANA
 
 
 def test_tal_cod_alarma2_null_maps_to_vf() -> None:
@@ -143,6 +179,30 @@ def test_from_feature_with_partial_coordinates_does_not_raise() -> None:
     inc = Incident.from_feature(feature)
     assert inc.lon == 2.0
     assert inc.lat == 0.0
+
+
+def test_missing_coordinates_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
+    feature = {
+        "geometry": {"coordinates": []},
+        "properties": {"ACT_NUM_ACTUACIO": "1"},
+    }
+    with caplog.at_level("WARNING"):
+        inc = Incident.from_feature(feature)
+    assert inc.lat == 0.0
+    assert inc.lon == 0.0
+    assert any("coordinate" in record.message.lower() for record in caplog.records)
+
+
+def test_present_coordinates_do_not_log_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    feature = {
+        "geometry": {"coordinates": [2.0, 41.0]},
+        "properties": {"ACT_NUM_ACTUACIO": "1"},
+    }
+    with caplog.at_level("WARNING"):
+        Incident.from_feature(feature)
+    assert not any("coordinate" in record.message.lower() for record in caplog.records)
 
 
 def test_from_feature_with_garbage_timestamp_does_not_raise() -> None:

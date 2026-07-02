@@ -8,7 +8,11 @@ import aiohttp
 import pytest
 from aioresponses import CallbackResult, aioresponses
 from custom_components.bomberscat import arcgis
-from custom_components.bomberscat.arcgis import MAX_ATTEMPTS, RETRY_BACKOFFS_SECONDS
+from custom_components.bomberscat.arcgis import (
+    MAX_ATTEMPTS,
+    REQUEST_TIMEOUT,
+    RETRY_BACKOFFS_SECONDS,
+)
 from custom_components.bomberscat.const import (
     PLA_ALFA_COM_AVUI_URL,
     PLA_ALFA_MUNI_AVUI_URL,
@@ -291,3 +295,81 @@ async def test_4xx_raises_immediately_without_retry() -> None:
 
     assert call_count == 1
     assert sleeps == []
+
+
+# ---------------------------------------------------------------------------
+# Request timeout
+# ---------------------------------------------------------------------------
+
+
+async def test_fetch_query_passes_explicit_timeout() -> None:
+    """Every session.get call must pass an explicit timeout so a hung
+    connection cannot stall for aiohttp's 300s-per-attempt default."""
+    captured_kwargs: dict = {}
+    real_get = aiohttp.ClientSession.get
+
+    def spy_get(self, url, **kwargs):
+        captured_kwargs.update(kwargs)
+        return real_get(self, url, **kwargs)
+
+    with aioresponses() as mocked:
+        mocked.get(MUNI_URL_PATTERN, payload=_muni_payload())
+        mocked.get(DEMA_URL_PATTERN, payload=_dema_payload())
+        mocked.get(COM_URL_PATTERN, payload=_comarcal_payload())
+        async with aiohttp.ClientSession() as session:
+            with pytest.MonkeyPatch.context() as mp:
+                mp.setattr(aiohttp.ClientSession, "get", spy_get)
+                await fetch_risk(session, LAT, LON, sleep=_noop_sleep)
+
+    assert captured_kwargs.get("timeout") is REQUEST_TIMEOUT
+
+
+# ---------------------------------------------------------------------------
+# No PII (home coordinates) in error messages
+# ---------------------------------------------------------------------------
+
+
+async def test_no_municipality_error_message_has_no_coordinate_digits() -> None:
+    """The "no polygon intersects" error is logged at ERROR by
+    DataUpdateCoordinator; it must not embed the user's precise home
+    coordinates (PII) in home-assistant.log."""
+    with aioresponses() as mocked:
+        mocked.get(MUNI_URL_PATTERN, payload=_empty_payload())
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(ArcgisClientError) as exc_info:
+                await fetch_risk(session, LAT, LON, sleep=_noop_sleep)
+
+    message = str(exc_info.value)
+    assert not any(char.isdigit() for char in message)
+
+
+# ---------------------------------------------------------------------------
+# PERIL_M missing -> warning logged, still defaults to 0
+# ---------------------------------------------------------------------------
+
+
+async def test_missing_peril_m_logs_warning_and_defaults_to_zero(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    payload = {
+        "features": [
+            {
+                "attributes": {
+                    "CODIMUNI": "080193",
+                    "NOMMUNI": "Barcelona",
+                    "NOMCOMAR": "Barcelonès",
+                    "PERIL_M": None,
+                }
+            }
+        ]
+    }
+    with aioresponses() as mocked:
+        mocked.get(MUNI_URL_PATTERN, payload=payload)
+        mocked.get(DEMA_URL_PATTERN, payload=_empty_payload())
+        mocked.get(COM_URL_PATTERN, payload=_empty_payload())
+        async with aiohttp.ClientSession() as session:
+            with caplog.at_level("WARNING"):
+                risk = await fetch_risk(session, LAT, LON, sleep=_noop_sleep)
+
+    assert risk.peril_m == 0
+    assert any("PERIL_M" in record.message for record in caplog.records)

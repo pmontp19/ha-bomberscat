@@ -54,9 +54,19 @@ class Tipus(str, Enum):  # noqa: UP042 -- str Enum per docs/04-architecture.md Â
 
 
 def _parse_fase(raw: Any) -> Fase:
-    """Parse `COM_FASE`; null or unrecognized values map to `Fase.ACTIU`."""
+    """Parse `COM_FASE`; null or unrecognized values map to `Fase.ACTIU`.
+
+    The raw value is `.strip()`-ed before matching against `Fase`'s members:
+    the live FeatureServer has been observed padding this field (e.g.
+    `"Estabilitzat "`), which would otherwise silently misclassify as
+    `Fase.ACTIU` and suppress `bomberscat_phase_change` events. Casing is
+    left as-is (not casefolded) -- an unexpected-case value still falls back
+    to `Fase.ACTIU` with a warning, same as any other unrecognized value.
+    """
     if not raw:
         return Fase.ACTIU
+    if isinstance(raw, str):
+        raw = raw.strip()
     try:
         return Fase(raw)
     except ValueError:
@@ -65,9 +75,14 @@ def _parse_fase(raw: Any) -> Fase:
 
 
 def _parse_tipus(raw: Any) -> Tipus:
-    """Parse `TAL_COD_ALARMA2`; null or unrecognized values map to `Tipus.FORESTAL`."""
+    """Parse `TAL_COD_ALARMA2`; null or unrecognized values map to `Tipus.FORESTAL`.
+
+    See `_parse_fase` for why the raw value is `.strip()`-ed first.
+    """
     if not raw:
         return Tipus.FORESTAL
+    if isinstance(raw, str):
+        raw = raw.strip()
     try:
         return Tipus(raw)
     except ValueError:
@@ -141,10 +156,20 @@ class Incident:
         lon = coordinates[0] if len(coordinates) > 0 else None
         lat = coordinates[1] if len(coordinates) > 1 else None
 
+        parsed_lat = _parse_float(lat)
+        parsed_lon = _parse_float(lon)
+        if parsed_lat is None or parsed_lon is None:
+            _LOGGER.warning(
+                "Missing/unparseable coordinates for ACT_NUM_ACTUACIO %r"
+                " (geometry=%r), defaulting to (0.0, 0.0)",
+                props.get("ACT_NUM_ACTUACIO"),
+                geometry,
+            )
+
         return cls(
             act_num=str(props.get("ACT_NUM_ACTUACIO") or ""),
-            lat=_parse_float(lat) or 0.0,
-            lon=_parse_float(lon) or 0.0,
+            lat=parsed_lat or 0.0,
+            lon=parsed_lon or 0.0,
             fase=_parse_fase(props.get("COM_FASE")),
             tipus=_parse_tipus(props.get("TAL_COD_ALARMA2")),
             tipus_desc=props.get("TAL_DESC_ALARMA2") or "",

@@ -236,6 +236,21 @@ async def test_recovers_after_fetch_error(hass: HomeAssistant) -> None:
 # ---------------------------------------------------------------------------
 
 
+async def test_distance_km_reflects_updated_coordinates_across_cycles(
+    hass: HomeAssistant,
+) -> None:
+    """distance_km must not be cached by act_num: the same incident can get
+    corrected/updated coordinates on a later snapshot row, and events/sensors
+    should reflect the new distance, not a stale one from the first sighting.
+    """
+    near = make_incident("1", lat=HOME_LAT, lon=HOME_LON)
+    far = make_incident("1", lat=FAR_AWAY_LAT, lon=HOME_LON)
+    coordinator = _coordinator(hass)
+
+    assert coordinator.distance_km(near) == pytest.approx(0.0, abs=1e-6)
+    assert coordinator.distance_km(far) > 1000
+
+
 async def test_incremental_since_passed_correctly(hass: HomeAssistant) -> None:
     first = make_incident("1")
     coordinator = _coordinator(hass)

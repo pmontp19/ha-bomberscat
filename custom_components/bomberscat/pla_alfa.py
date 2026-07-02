@@ -52,7 +52,12 @@ import aiohttp
 from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .arcgis import MAX_ATTEMPTS, RETRY_BACKOFFS_SECONDS, ArcgisClientError
+from .arcgis import (
+    MAX_ATTEMPTS,
+    REQUEST_TIMEOUT,
+    RETRY_BACKOFFS_SECONDS,
+    ArcgisClientError,
+)
 from .const import (
     DOMAIN,
     PLA_ALFA_COM_AVUI_URL,
@@ -153,7 +158,9 @@ async def _fetch_query(
     last_error: Exception | None = None
     for attempt in range(MAX_ATTEMPTS):
         try:
-            async with session.get(query_url, params=params) as resp:
+            async with session.get(
+                query_url, params=params, timeout=REQUEST_TIMEOUT
+            ) as resp:
                 if 400 <= resp.status < 500:
                     body = await resp.text()
                     raise ArcgisClientError(
@@ -241,11 +248,22 @@ async def fetch_risk(
         sleep=sleep,
     )
     if muni_avui is None:
+        # Deliberately generic: this message is surfaced via UpdateFailed and
+        # logged at ERROR by DataUpdateCoordinator, which would otherwise put
+        # the user's precise home coordinates (PII) into home-assistant.log.
+        _LOGGER.debug("Pla Alfa: no municipality polygon intersects (%s, %s)", lat, lon)
         raise ArcgisClientError(
-            f"Pla Alfa: no municipality polygon intersects ({lat}, {lon})"
+            "Pla Alfa: home location is outside any Pla Alfa municipality polygon"
         )
 
-    peril_m = _parse_int(muni_avui.get("PERIL_M")) or 0
+    raw_peril_m = muni_avui.get("PERIL_M")
+    peril_m = _parse_int(raw_peril_m)
+    if peril_m is None:
+        _LOGGER.warning(
+            "Pla Alfa: municipal PERIL_M missing/unparseable (%r), defaulting to 0",
+            raw_peril_m,
+        )
+        peril_m = 0
     municipi = muni_avui.get("NOMMUNI")
     comarca = muni_avui.get("NOMCOMAR")
 

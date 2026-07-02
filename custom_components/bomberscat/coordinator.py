@@ -417,10 +417,6 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
         )
         self._session = session
         self._resolved_grace_minutes = resolved_grace_minutes
-        # Fire locations are immutable for a given act_num, so a distance
-        # once computed never needs to be recomputed (docs/04-architecture
-        # §5, "Càlcul de distància").
-        self._distance_cache: dict[str, float] = {}
         # One repair issue per config entry (Task 13): stable across
         # reloads within the same entry so a second `async_create_issue`
         # call while already degraded just updates it in place rather than
@@ -428,15 +424,18 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
         self._degraded_issue_id = f"service_degraded_{entry.entry_id}"
 
     def distance_km(self, inc: Incident) -> float:
-        """Distance in km from home to `inc`, cached per `act_num`."""
-        cached = self._distance_cache.get(inc.act_num)
-        if cached is not None:
-            return cached
-        distance = haversine_km(
+        """Distance in km from home to `inc`.
+
+        Deliberately uncached: although a given `act_num` usually keeps the
+        same coordinates across snapshot rows, it is not guaranteed (a
+        corrected/updated location on a later row) -- caching by `act_num`
+        would then serve a stale distance in events/sensors while
+        `geo_location` shows the new coordinates. `haversine_km` is cheap
+        trig, so recomputing every time is the simplest correct option.
+        """
+        return haversine_km(
             self.config.home_lat, self.config.home_lon, inc.lat, inc.lon
         )
-        self._distance_cache[inc.act_num] = distance
-        return distance
 
     async def _async_update_data(self) -> BomberscatState:
         previous = self.data
