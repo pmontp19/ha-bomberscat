@@ -1,6 +1,6 @@
 [project]
 name = "ha-bomberscat"
-version = "0.1.0"
+version = "0.2.0"
 description = "Home Assistant custom integration for Catalonia wildfire monitoring (Bombers de Catalunya)."
 requires-python = ">=3.13"
 license = { text = "MIT" }
