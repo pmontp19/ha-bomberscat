@@ -1,7 +1,9 @@
 {
   "domain": "incendiscat",
   "name": "Incendis Catalunya",
-  "codeowners": ["@pmontp19"],
+  "codeowners": [
+    "@pmontp19"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/pmontp19/ha-incendiscat",
   "integration_type": "service",
@@ -9,5 +11,5 @@
   "issue_tracker": "https://github.com/pmontp19/ha-incendiscat/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

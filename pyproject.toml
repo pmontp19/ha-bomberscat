@@ -1,6 +1,6 @@
 [project]
 name = "ha-incendiscat"
-version = "0.2.0"
+version = "0.3.0"
 description = "Home Assistant custom integration for Catalonia wildfire monitoring (Incendis Catalunya)."
 requires-python = ">=3.13"
 license = { text = "MIT" }
