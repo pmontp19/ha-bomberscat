@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-COMPONENT_DIR = Path(__file__).parent.parent / "custom_components" / "bomberscat"
+COMPONENT_DIR = Path(__file__).parent.parent / "custom_components" / "incendiscat"
 TRANSLATIONS_DIR = COMPONENT_DIR / "translations"
 
 

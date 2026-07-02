@@ -1,4 +1,4 @@
-"""Domain models for bomberscat: `Incident`, `Fase`, `Tipus`.
+"""Domain models for incendiscat: `Incident`, `Fase`, `Tipus`.
 
 No Home Assistant imports here on purpose: this module must be testable in
 complete isolation.
@@ -59,7 +59,7 @@ def _parse_fase(raw: Any) -> Fase:
     The raw value is `.strip()`-ed before matching against `Fase`'s members:
     the live FeatureServer has been observed padding this field (e.g.
     `"Estabilitzat "`), which would otherwise silently misclassify as
-    `Fase.ACTIU` and suppress `bomberscat_phase_change` events. Casing is
+    `Fase.ACTIU` and suppress `incendiscat_phase_change` events. Casing is
     left as-is (not casefolded) -- an unexpected-case value still falls back
     to `Fase.ACTIU` with a warning, same as any other unrecognized value.
     """

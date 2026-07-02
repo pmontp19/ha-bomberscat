@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.arcgis import ArcgisClientError
-from custom_components.bomberscat.const import DOMAIN, EVENT_SERVICE_DEGRADED
-from custom_components.bomberscat.coordinator import (
-    BomberscatState,
+from custom_components.incendiscat.arcgis import ArcgisClientError
+from custom_components.incendiscat.const import DOMAIN, EVENT_SERVICE_DEGRADED
+from custom_components.incendiscat.coordinator import (
+    IncendiscatState,
     last_update_status,
 )
 from homeassistant.core import HomeAssistant
@@ -27,7 +27,7 @@ from .conftest import FakeClock, make_config_entry, make_incident
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 
@@ -101,7 +101,7 @@ async def test_last_update_status_classification(
     failures leave `last_update_success` unchanged (`False` -> `False`) —
     see its early-`return` guard. That optimization is orthogonal to this
     task (our own `consecutive_4xx_failures`/`degraded` bookkeeping and the
-    `bomberscat_service_degraded` event/issue are updated unconditionally
+    `incendiscat_service_degraded` event/issue are updated unconditionally
     inside `_async_update_data`, independent of whether HA also pushes an
     entity-state update — see `test_persistent_404_fires_event_once_and_
     creates_issue`), so each case here goes through a fresh success->failure
@@ -150,7 +150,7 @@ async def test_last_update_status_classification(
 def test_last_update_status_classifier_covers_all_kinds() -> None:
     """Unit-level coverage of `last_update_status()` for every
     `ArcgisClientError.kind`, independent of coordinator/HA plumbing."""
-    assert last_update_status(BomberscatState(last_error=None)) == "success"
+    assert last_update_status(IncendiscatState(last_error=None)) == "success"
     cases = {
         "http_404": "error_http_404",
         "timeout": "error_timeout",
@@ -161,7 +161,7 @@ def test_last_update_status_classifier_covers_all_kinds() -> None:
         None: "error_unknown",
     }
     for kind, expected in cases.items():
-        state = BomberscatState(last_error="boom", last_error_kind=kind)
+        state = IncendiscatState(last_error="boom", last_error_kind=kind)
         assert last_update_status(state) == expected
 
 

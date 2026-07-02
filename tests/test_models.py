@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from custom_components.bomberscat.models import Fase, Incident, Tipus
+from custom_components.incendiscat.models import Fase, Incident, Tipus
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
@@ -94,7 +94,7 @@ def test_com_fase_missing_key_maps_to_actiu() -> None:
 def test_com_fase_padded_value_is_stripped_before_matching() -> None:
     """A trailing/leading space (observed on the live FeatureServer) must not
     misclassify a real phase value as unknown -> Actiu, which would silently
-    suppress bomberscat_phase_change events."""
+    suppress incendiscat_phase_change events."""
     feature = {
         "geometry": {"type": "Point", "coordinates": [2.0, 41.0]},
         "properties": {"ACT_NUM_ACTUACIO": "1", "COM_FASE": "Estabilitzat "},

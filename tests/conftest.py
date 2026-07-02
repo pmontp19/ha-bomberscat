@@ -1,14 +1,14 @@
-"""Shared pytest fixtures for bomberscat tests."""
+"""Shared pytest fixtures for incendiscat tests."""
 
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from custom_components.bomberscat.const import (
+from custom_components.incendiscat.const import (
     CONF_ALERT_RADIUS,
     CONF_TRACK_RADIUS,
     DOMAIN,
 )
-from custom_components.bomberscat.models import Fase, Incident, Tipus
+from custom_components.incendiscat.models import Fase, Incident, Tipus
 from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -20,7 +20,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     """Enable custom integrations for every test automatically.
 
     Required by pytest-homeassistant-custom-component so that Home Assistant
-    picks up custom_components/bomberscat during tests.
+    picks up custom_components/incendiscat during tests.
     """
     return enable_custom_integrations
 
@@ -39,7 +39,7 @@ def make_config_entry(
     home_lon: float = HOME_LON,
     options: dict | None = None,
 ) -> MockConfigEntry:
-    """Build a `MockConfigEntry` for the bomberscat domain with sane defaults."""
+    """Build a `MockConfigEntry` for the incendiscat domain with sane defaults."""
     return MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -91,7 +91,7 @@ class FakeClock:
     """A controllable stand-in for `homeassistant.util.dt.utcnow`.
 
     Grace-period cleanup (`_cleanup_resolved`) and `duration_min` in
-    `bomberscat_fire_resolved` payloads depend on wall-clock time. Rather
+    `incendiscat_fire_resolved` payloads depend on wall-clock time. Rather
     than sleeping for real minutes (or fighting `freezegun` across many
     `async_refresh()` calls), tests advance this clock explicitly between
     cycles.
@@ -111,5 +111,5 @@ class FakeClock:
 def clock(monkeypatch: pytest.MonkeyPatch) -> FakeClock:
     """Patch `coordinator.utcnow` with a `FakeClock`, starting at a fixed time."""
     fake = FakeClock(datetime(2026, 7, 2, 12, 0, tzinfo=UTC))
-    monkeypatch.setattr("custom_components.bomberscat.coordinator.utcnow", fake)
+    monkeypatch.setattr("custom_components.incendiscat.coordinator.utcnow", fake)
     return fake

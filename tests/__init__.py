@@ -1,1 +1,1 @@
-"""Tests for the bomberscat integration."""
+"""Tests for the incendiscat integration."""

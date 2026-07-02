@@ -9,29 +9,29 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.bomberscat.const import (
+from custom_components.incendiscat.const import (
     BOMBERS_VIEWER_URL,
     CONF_MIN_VEHICLES,
     EVENT_FIRE_DETECTED,
     EVENT_FIRE_RESOLVED,
     EVENT_PHASE_CHANGE,
 )
-from custom_components.bomberscat.coordinator import BomberscatDataUpdateCoordinator
-from custom_components.bomberscat.models import Fase
+from custom_components.incendiscat.coordinator import IncendiscatDataUpdateCoordinator
+from custom_components.incendiscat.models import Fase
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import async_capture_events
 
 from .conftest import HOME_LAT, HOME_LON, FakeClock, make_config_entry, make_incident
 
 
-def _coordinator(hass: HomeAssistant, entry=None) -> BomberscatDataUpdateCoordinator:
+def _coordinator(hass: HomeAssistant, entry=None) -> IncendiscatDataUpdateCoordinator:
     entry = entry or make_config_entry()
-    return BomberscatDataUpdateCoordinator(hass, entry, MagicMock(name="session"))
+    return IncendiscatDataUpdateCoordinator(hass, entry, MagicMock(name="session"))
 
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 

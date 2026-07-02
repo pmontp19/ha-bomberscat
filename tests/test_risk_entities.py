@@ -15,10 +15,10 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.arcgis import ArcgisClientError
-from custom_components.bomberscat.arcgis import ArcgisClientError as BombersError
-from custom_components.bomberscat.const import CONF_HIGH_RISK_THRESHOLD, DOMAIN
-from custom_components.bomberscat.pla_alfa import PlaAlfaRisk
+from custom_components.incendiscat.arcgis import ArcgisClientError
+from custom_components.incendiscat.arcgis import ArcgisClientError as BombersError
+from custom_components.incendiscat.const import CONF_HIGH_RISK_THRESHOLD, DOMAIN
+from custom_components.incendiscat.pla_alfa import PlaAlfaRisk
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -47,14 +47,14 @@ RISK_BAIX = PlaAlfaRisk(
 
 def _patched_incidents(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects) or [[]]),
     )
 
 
 def _patched_risk(*side_effects):
     return patch(
-        "custom_components.bomberscat.pla_alfa.fetch_risk",
+        "custom_components.incendiscat.pla_alfa.fetch_risk",
         AsyncMock(side_effect=list(side_effects)),
     )
 

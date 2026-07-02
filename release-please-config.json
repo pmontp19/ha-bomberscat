@@ -3,13 +3,13 @@
   "packages": {
     ".": {
       "release-type": "python",
-      "package-name": "ha-bomberscat",
+      "package-name": "ha-incendiscat",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "extra-files": [
         {
           "type": "json",
-          "path": "custom_components/bomberscat/manifest.json",
+          "path": "custom_components/incendiscat/manifest.json",
           "jsonpath": "$.version"
         }
       ]

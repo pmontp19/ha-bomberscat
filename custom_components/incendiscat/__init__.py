@@ -1,4 +1,4 @@
-"""The Bombers de Catalunya (bomberscat) integration.
+"""The Incendis Catalunya (incendiscat) integration.
 
 Monitors real-time wildfire activity in Catalonia via the Catalan Fire
 Department (Bombers) public ArcGIS FeatureServer, plus wildfire-risk data
@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
-from .coordinator import BomberscatDataUpdateCoordinator
+from .coordinator import IncendiscatDataUpdateCoordinator
 from .pla_alfa import PlaAlfaCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,10 +30,10 @@ _LOGGER = logging.getLogger(__name__)
 # the Pla Alfa coordinator to it as a plain instance attribute,
 # `coordinator.pla_alfa`, set once in `async_setup_entry` below before
 # entities are created. This is the "smallest diff" option:
-# `BomberscatDataUpdateCoordinator` is a regular (non-slotted) class, so
+# `IncendiscatDataUpdateCoordinator` is a regular (non-slotted) class, so
 # this is a normal, if untyped-on-the-class, attribute — sensor.py
 # /binary_sensor.py read it as `entry.runtime_data.pla_alfa`.
-type BomberscatConfigEntry = ConfigEntry[BomberscatDataUpdateCoordinator]
+type IncendiscatConfigEntry = ConfigEntry[IncendiscatDataUpdateCoordinator]
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.BINARY_SENSOR,
@@ -41,11 +41,11 @@ PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
 )
 
-__all__ = ["DOMAIN", "BomberscatConfigEntry"]
+__all__ = ["DOMAIN", "IncendiscatConfigEntry"]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: BomberscatConfigEntry) -> bool:
-    """Set up bomberscat from a config entry.
+async def async_setup_entry(hass: HomeAssistant, entry: IncendiscatConfigEntry) -> bool:
+    """Set up incendiscat from a config entry.
 
     `async_config_entry_first_refresh()` runs the first poll synchronously
     and raises `ConfigEntryNotReady` on failure (network error, FeatureServer
@@ -66,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BomberscatConfigEntry) -
     *previous* refresh succeeded.
     """
     session = async_get_clientsession(hass)
-    coordinator = BomberscatDataUpdateCoordinator(hass, entry, session)
+    coordinator = IncendiscatDataUpdateCoordinator(hass, entry, session)
     await coordinator.async_config_entry_first_refresh()
 
     pla_alfa_coordinator = PlaAlfaCoordinator(hass, entry, session)
@@ -88,12 +88,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: BomberscatConfigEntry) -
 
 
 async def _async_update_listener(
-    hass: HomeAssistant, entry: BomberscatConfigEntry
+    hass: HomeAssistant, entry: IncendiscatConfigEntry
 ) -> None:
     """Reload the entry when options change."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: BomberscatConfigEntry) -> bool:
-    """Unload a bomberscat config entry."""
+async def async_unload_entry(
+    hass: HomeAssistant, entry: IncendiscatConfigEntry
+) -> bool:
+    """Unload a incendiscat config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

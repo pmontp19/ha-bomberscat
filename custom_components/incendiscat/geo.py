@@ -1,4 +1,4 @@
-"""Pure geometry helpers for bomberscat.
+"""Pure geometry helpers for incendiscat.
 
 No Home Assistant imports here on purpose: this module must be testable in
 complete isolation.

@@ -6,7 +6,7 @@
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python -r requirements_dev.txt
 
-.venv/bin/pytest --cov=custom_components/bomberscat --cov-fail-under=95
+.venv/bin/pytest --cov=custom_components/incendiscat --cov-fail-under=95
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 ```
@@ -34,7 +34,7 @@ No referenciïs números de tasca del pla d'implementació (`T14`, `Task 5`...) 
 El projecte és pre-1.0 (`bump-minor-pre-major` actiu a `release-please-config.json`): mentre no arribem a `1.0.0` expressament, un `fix!`/`BREAKING CHANGE` bumpeja **minor**, no major.
 
 1. Mergeja PRs normals a `main` amb Conventional Commits.
-2. `release-please` manté (i actualitza) automàticament una PR `chore(main): release vX.Y.Z` amb el changelog i el bump de versió a `pyproject.toml` + `custom_components/bomberscat/manifest.json`.
+2. `release-please` manté (i actualitza) automàticament una PR `chore(main): release vX.Y.Z` amb el changelog i el bump de versió a `pyproject.toml` + `custom_components/incendiscat/manifest.json`.
 3. No editis aquests dos camps de versió a mà — `release-please` és l'única font de veritat.
 4. Mergejar aquesta PR crea el tag `vX.Y.Z` i la Release de GitHub automàticament.
 

@@ -1,11 +1,11 @@
-"""Data update coordinator for bomberscat + event emission.
+"""Data update coordinator for incendiscat + event emission.
 
 Polls the Bombers ArcGIS FeatureServer (via ``arcgis.fetch_incidents``) on an
 interval, applies the tracking filters/radius from docs/03-feature-spec.md
-§2, and fires the ``bomberscat_fire_detected`` / ``bomberscat_phase_change`` /
-``bomberscat_fire_resolved`` events from docs/03-feature-spec.md §4.
+§2, and fires the ``incendiscat_fire_detected`` / ``incendiscat_phase_change`` /
+``incendiscat_fire_resolved`` events from docs/03-feature-spec.md §4.
 
-Deviation from the `BomberscatState` sketch in docs/04-architecture.md §5:
+Deviation from the `IncendiscatState` sketch in docs/04-architecture.md §5:
 that sketch keeps *both* the current `incidents` dict *and* separate
 `prev_fases` / `prev_act_nums` / `_snapshot` bookkeeping fields to compare
 against on the next cycle (its `_emit_events` pseudocode even references
@@ -27,7 +27,7 @@ this means an incremental `since=<last DATA_ACT>` query can *never* observe
 a deletion: an act_num that stops being returned just silently drops out of
 the incremental window forever, and the old "carry forward whatever we last
 saw" design would keep a tracked incident (and its `geo_location` entity)
-alive indefinitely, never firing `bomberscat_fire_resolved`.
+alive indefinitely, never firing `incendiscat_fire_resolved`.
 
 Given the dataset is tiny (tens of rows, comfortably one page), we instead
 fetch the *entire* current view every cycle (`fetch_incidents(session,
@@ -45,7 +45,7 @@ Assistant's `DataUpdateCoordinator`
 only overwrites `self.data` *after* `_async_update_data` returns
 successfully (see `_async_refresh` in
 `homeassistant.helpers.update_coordinator`), so raising `UpdateFailed`
-already guarantees the previous `BomberscatState` (and therefore all
+already guarantees the previous `IncendiscatState` (and therefore all
 existing entities) survives untouched — we do not need to special-case
 "keep the old state" ourselves. We additionally mutate the *existing*
 state's `last_error` field in place (when one exists) before raising, so
@@ -62,23 +62,23 @@ Event-suppression semantics: no events are fired on the very first
 successful refresh after startup/reload (`previous is None`), to avoid a
 notification storm replaying every currently-active fire as "detected" on
 every Home Assistant restart. In practice this only affects
-`bomberscat_fire_detected`: `bomberscat_phase_change` and
-`bomberscat_fire_resolved` can only fire for an incident that was *already*
+`incendiscat_fire_detected`: `incendiscat_phase_change` and
+`incendiscat_fire_resolved` can only fire for an incident that was *already*
 tracked in a previous cycle, which is impossible on the first refresh by
 construction (`base_incidents` is empty). We still suppress unconditionally
 (rather than relying on that invariant) so the intent is explicit and the
 code stays correct if the tracking logic ever changes.
 
 Service-degradation semantics (docs/04-architecture.md §9 "URL
-canviada (404 persistent)"): `BomberscatState.consecutive_4xx_failures`
+canviada (404 persistent)"): `IncendiscatState.consecutive_4xx_failures`
 counts *consecutive* failures whose `ArcgisClientError.kind` is in
 `_DEGRADATION_KINDS` (a 4xx response — the "schema/URL changed" signature).
 It resets to 0 both on a successful refresh *and* on a failure of a
 different kind (timeout/5xx/parse): a non-4xx failure in between two 404s
 means the run was not actually a consecutive sequence of that specific
 signature. Once the streak reaches `DEGRADED_FAILURE_THRESHOLD`, we fire
-`bomberscat_service_degraded` and raise a repair issue exactly once
-(`BomberscatState.degraded` gates re-firing every subsequent cycle); the
+`incendiscat_service_degraded` and raise a repair issue exactly once
+(`IncendiscatState.degraded` gates re-firing every subsequent cycle); the
 repair issue is only cleared on an actual successful refresh, regardless of
 what interleaving failures reset the streak counter in between — the user
 should keep seeing the issue until the service demonstrably recovers, not
@@ -128,7 +128,7 @@ if TYPE_CHECKING:
     import aiohttp
     from homeassistant.core import HomeAssistant
 
-    from . import BomberscatConfigEntry
+    from . import IncendiscatConfigEntry
     from .pla_alfa import PlaAlfaCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -155,8 +155,8 @@ _ERROR_STATUS_LABELS: dict[str, str] = {
 }
 
 
-def last_update_status(state: BomberscatState) -> str:
-    """`sensor.bomberscat_last_update_status` value (feature-spec §3.11).
+def last_update_status(state: IncendiscatState) -> str:
+    """`sensor.incendiscat_last_update_status` value (feature-spec §3.11).
 
     `"success"` when the last refresh cycle completed without error;
     otherwise `"error_<code>"`, derived from `state.last_error_kind` (itself
@@ -207,7 +207,7 @@ def _normalize_stored_options(
 
 
 @dataclass(frozen=True, slots=True)
-class BomberscatRuntimeConfig:
+class IncendiscatRuntimeConfig:
     """Resolved tracking configuration for one config entry.
 
     Location + the two radii come from `entry.data` (the config flow's step
@@ -229,8 +229,8 @@ class BomberscatRuntimeConfig:
     scan_interval_min: int
 
     @classmethod
-    def from_entry(cls, entry: BomberscatConfigEntry) -> BomberscatRuntimeConfig:
-        """Build a `BomberscatRuntimeConfig` from a config entry's data+options."""
+    def from_entry(cls, entry: IncendiscatConfigEntry) -> IncendiscatRuntimeConfig:
+        """Build a `IncendiscatRuntimeConfig` from a config entry's data+options."""
         data = entry.data
         options = entry.options
         return cls(
@@ -252,7 +252,7 @@ class BomberscatRuntimeConfig:
 
 
 @dataclass(eq=False)
-class BomberscatState:
+class IncendiscatState:
     """Snapshot of tracked incidents + sync/error bookkeeping.
 
     `incidents` holds everything currently "shown": incidents that pass the
@@ -274,9 +274,9 @@ class BomberscatState:
 
     `last_error_kind`/`consecutive_4xx_failures`/`degraded` track
     the "persistent 404" resilience case (docs/04-architecture.md §9): see
-    `BomberscatDataUpdateCoordinator._async_update_data` for how they are
+    `IncendiscatDataUpdateCoordinator._async_update_data` for how they are
     updated, and `last_update_status()` above for how `last_error_kind`
-    becomes `sensor.bomberscat_last_update_status`.
+    becomes `sensor.incendiscat_last_update_status`.
     """
 
     incidents: dict[str, Incident] = field(default_factory=dict)
@@ -288,7 +288,7 @@ class BomberscatState:
     degraded: bool = False
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, BomberscatState):
+        if not isinstance(other, IncendiscatState):
             return NotImplemented
         return (
             self.incidents == other.incidents
@@ -303,13 +303,13 @@ class BomberscatState:
     __hash__ = None  # type: ignore[assignment]
 
 
-def _passes_filters(inc: Incident, cfg: BomberscatRuntimeConfig) -> bool:
+def _passes_filters(inc: Incident, cfg: IncendiscatRuntimeConfig) -> bool:
     """Subtipus + phase + min_vehicles filter (docs/04-architecture.md §5).
 
     `Extingit` is deliberately let through regardless of `active_phases` so
     that an incident already being tracked can be *observed* transitioning
-    into `Extingit` (to fire `bomberscat_fire_resolved` / update
-    `bomberscat_phase_change`). Whether a fresh, never-before-tracked
+    into `Extingit` (to fire `incendiscat_fire_resolved` / update
+    `incendiscat_phase_change`). Whether a fresh, never-before-tracked
     `Extingit` incident should actually start being tracked is handled
     separately in `_should_track` (it should not: there is nothing to alert
     on, and no phase transition to observe).
@@ -323,12 +323,12 @@ def _passes_filters(inc: Incident, cfg: BomberscatRuntimeConfig) -> bool:
 
 def _should_track(
     inc: Incident,
-    cfg: BomberscatRuntimeConfig,
+    cfg: IncendiscatRuntimeConfig,
     *,
     distance_km: float,
     was_tracked: bool,
 ) -> bool:
-    """Whether `inc` belongs in `BomberscatState.incidents` this cycle."""
+    """Whether `inc` belongs in `IncendiscatState.incidents` this cycle."""
     if not _passes_filters(inc, cfg):
         return False
     if distance_km > cfg.track_radius_km:
@@ -339,9 +339,9 @@ def _should_track(
 
 
 def _fire_detected_payload(
-    inc: Incident, distance_km: float, cfg: BomberscatRuntimeConfig
+    inc: Incident, distance_km: float, cfg: IncendiscatRuntimeConfig
 ) -> dict[str, Any]:
-    """Payload for `bomberscat_fire_detected` (docs/03-feature-spec.md §4.1)."""
+    """Payload for `incendiscat_fire_detected` (docs/03-feature-spec.md §4.1)."""
     return {
         "act_num": inc.act_num,
         "distance_km": round(distance_km, 1),
@@ -360,7 +360,7 @@ def _fire_detected_payload(
 def _phase_change_payload(
     inc: Incident, old_fase: Fase, distance_km: float
 ) -> dict[str, Any]:
-    """Payload for `bomberscat_phase_change` (docs/03-feature-spec.md §4.3)."""
+    """Payload for `incendiscat_phase_change` (docs/03-feature-spec.md §4.3)."""
     return {
         "act_num": inc.act_num,
         "municipi": inc.municipi,
@@ -371,7 +371,7 @@ def _phase_change_payload(
 
 
 def _fire_resolved_payload(inc: Incident, now: datetime) -> dict[str, Any]:
-    """Payload for `bomberscat_fire_resolved` (docs/03-feature-spec.md §4.2).
+    """Payload for `incendiscat_fire_resolved` (docs/03-feature-spec.md §4.2).
 
     `duration_min` is best-effort: `ACT_DAT_INICI` can be null on the source
     data (see docs/01-data-sources.md), in which case we report `None`
@@ -390,7 +390,7 @@ def _fire_resolved_payload(inc: Incident, now: datetime) -> dict[str, Any]:
 
 def _apply_incident(
     inc: Incident,
-    cfg: BomberscatRuntimeConfig,
+    cfg: IncendiscatRuntimeConfig,
     *,
     base_incidents: dict[str, Incident],
     incidents: dict[str, Incident],
@@ -456,10 +456,10 @@ def _prune_vanished(
     which we would learn more.
 
     An incident already sitting out its removal grace period (present in
-    `resolved_at`) already fired `bomberscat_fire_resolved` when it turned
+    `resolved_at`) already fired `incendiscat_fire_resolved` when it turned
     `Extingit`; if it then vanishes (e.g. it aged out of the ~4-day
     `DATA_ACT` retention window before the grace period elapsed) it is just
-    removed, without a second `bomberscat_fire_resolved`. Anything else that
+    removed, without a second `incendiscat_fire_resolved`. Anything else that
     vanishes while still tracked is resolved now, using its last-known fase.
     """
     events: list[tuple[str, dict[str, Any]]] = []
@@ -491,27 +491,27 @@ def _cleanup_resolved(
         resolved_at.pop(act_num, None)
 
 
-class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
-    """Polls the Bombers FeatureServer and maintains `BomberscatState`."""
+class IncendiscatDataUpdateCoordinator(DataUpdateCoordinator[IncendiscatState]):
+    """Polls the Bombers FeatureServer and maintains `IncendiscatState`."""
 
     def __init__(
         self,
         hass: HomeAssistant,
-        entry: BomberscatConfigEntry,
+        entry: IncendiscatConfigEntry,
         session: aiohttp.ClientSession,
         *,
         resolved_grace_minutes: int = DEFAULT_RESOLVED_GRACE_PERIOD_MIN,
     ) -> None:
-        self.config = BomberscatRuntimeConfig.from_entry(entry)
+        self.config = IncendiscatRuntimeConfig.from_entry(entry)
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=f"{DOMAIN}_{entry.entry_id}",
             update_interval=timedelta(minutes=self.config.scan_interval_min),
-            # BomberscatState.__eq__ ignores volatile timestamps, so this
+            # IncendiscatState.__eq__ ignores volatile timestamps, so this
             # only suppresses listener callbacks when nothing entities care
-            # about actually changed (see BomberscatState's docstring).
+            # about actually changed (see IncendiscatState's docstring).
             always_update=False,
         )
         self._session = session
@@ -541,7 +541,7 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
             self.config.home_lat, self.config.home_lon, inc.lat, inc.lon
         )
 
-    async def _async_update_data(self) -> BomberscatState:
+    async def _async_update_data(self) -> IncendiscatState:
         previous = self.data
         is_first_refresh = previous is None
         cfg = self.config
@@ -619,7 +619,7 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
         if previous is not None and previous.degraded:
             self._clear_service_degraded()
 
-        return BomberscatState(
+        return IncendiscatState(
             incidents=incidents,
             resolved_at=resolved_at,
             last_success=now,
@@ -630,7 +630,7 @@ class BomberscatDataUpdateCoordinator(DataUpdateCoordinator[BomberscatState]):
         )
 
     def _mark_service_degraded(self, err: ArcgisClientError, count: int) -> None:
-        """Fire `bomberscat_service_degraded` once + raise a repair issue.
+        """Fire `incendiscat_service_degraded` once + raise a repair issue.
 
         Only called the cycle `consecutive_4xx_failures` first reaches
         `DEGRADED_FAILURE_THRESHOLD` (the `not previous.degraded` guard at

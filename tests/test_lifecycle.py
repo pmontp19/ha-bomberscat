@@ -3,7 +3,7 @@
 Setup-entry tests exercise the real `async_setup_entry`/`async_unload_entry`
 via `hass.config_entries.async_setup()`, patching `fetch_incidents` so no
 network access happens. Grace-period tests drive
-`BomberscatDataUpdateCoordinator` directly (as in `test_coordinator.py`),
+`IncendiscatDataUpdateCoordinator` directly (as in `test_coordinator.py`),
 using the `clock` fixture to advance time deterministically instead of
 sleeping for real minutes.
 """
@@ -12,9 +12,9 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from custom_components.bomberscat.arcgis import ArcgisClientError
-from custom_components.bomberscat.coordinator import BomberscatDataUpdateCoordinator
-from custom_components.bomberscat.models import Fase
+from custom_components.incendiscat.arcgis import ArcgisClientError
+from custom_components.incendiscat.coordinator import IncendiscatDataUpdateCoordinator
+from custom_components.incendiscat.models import Fase
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
@@ -23,16 +23,16 @@ from .conftest import FakeClock, make_config_entry, make_incident
 
 def _coordinator(
     hass: HomeAssistant, entry=None, **kwargs
-) -> BomberscatDataUpdateCoordinator:
+) -> IncendiscatDataUpdateCoordinator:
     entry = entry or make_config_entry()
-    return BomberscatDataUpdateCoordinator(
+    return IncendiscatDataUpdateCoordinator(
         hass, entry, MagicMock(name="session"), **kwargs
     )
 
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 
@@ -53,7 +53,7 @@ async def test_setup_entry_success_loads_entry_with_coordinator(
         await hass.async_block_till_done()
 
     assert entry.state is ConfigEntryState.LOADED
-    assert isinstance(entry.runtime_data, BomberscatDataUpdateCoordinator)
+    assert isinstance(entry.runtime_data, IncendiscatDataUpdateCoordinator)
     assert entry.runtime_data.data.incidents == {}
 
 

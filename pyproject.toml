@@ -1,14 +1,14 @@
 [project]
-name = "ha-bomberscat"
+name = "ha-incendiscat"
 version = "0.2.0"
-description = "Home Assistant custom integration for Catalonia wildfire monitoring (Bombers de Catalunya)."
+description = "Home Assistant custom integration for Catalonia wildfire monitoring (Incendis Catalunya)."
 requires-python = ">=3.13"
 license = { text = "MIT" }
 
 [tool.ruff]
 target-version = "py313"
 line-length = 88
-src = ["custom_components/bomberscat"]
+src = ["custom_components/incendiscat"]
 
 [tool.ruff.lint]
 select = [

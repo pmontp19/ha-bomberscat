@@ -1,4 +1,4 @@
-"""Config flow for the Bombers de Catalunya (bomberscat) integration.
+"""Config flow for the Incendis Catalunya (incendiscat) integration.
 
 Step 1: location + the two tracking radii (§2 of
 docs/03-feature-spec.md). Step 2 (this file): subtipus/fases/
@@ -76,7 +76,7 @@ ERROR_ALERT_GT_TRACK = "alert_gt_track"
 # in strings.json, which must match `[a-z0-9-_]+` — so these can no longer be
 # the raw (mixed-case) `TAL_COD_ALARMA2` / `COM_FASE` domain values. Those
 # domain values ("VF"/"Actiu"/...) are still used everywhere else (events,
-# geo_location attributes, models.Tipus/Fase); `BomberscatRuntimeConfig
+# geo_location attributes, models.Tipus/Fase); `IncendiscatRuntimeConfig
 # .from_entry` (coordinator.py) is the single place that maps a stored slug
 # back to its domain value. The user-facing label is supplied by
 # translations/*.json, keyed by the same lowercase slug.
@@ -217,8 +217,8 @@ def _default_location_suggestions(hass: Any) -> dict[str, Any]:
     }
 
 
-class BomberscatConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Bombers de Catalunya."""
+class IncendiscatConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for Incendis Catalunya."""
 
     VERSION = 1
 
@@ -272,7 +272,7 @@ class BomberscatConfigFlow(ConfigFlow, domain=DOMAIN):
         """
         if user_input is not None:
             return self.async_create_entry(
-                title="Bombers de Catalunya",
+                title="Incendis Catalunya",
                 data=self._location_data,
                 options=user_input,
             )
@@ -341,12 +341,12 @@ class BomberscatConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> BomberscatOptionsFlow:
+    def async_get_options_flow(config_entry: ConfigEntry) -> IncendiscatOptionsFlow:
         """Return the options flow for this integration."""
-        return BomberscatOptionsFlow()
+        return IncendiscatOptionsFlow()
 
 
-class BomberscatOptionsFlow(OptionsFlow):
+class IncendiscatOptionsFlow(OptionsFlow):
     """Edit filters/polling/min_vehicles + the high-risk threshold.
 
     Modern pattern (docs/04-architecture.md §8): no ``__init__`` storing

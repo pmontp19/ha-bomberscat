@@ -1,7 +1,7 @@
 """Tests for coordinator.py: fetch/filter/radius cycle logic (Task 5).
 
 These tests patch `fetch_incidents` at the coordinator's import site and
-drive `BomberscatDataUpdateCoordinator` directly with `async_refresh()`
+drive `IncendiscatDataUpdateCoordinator` directly with `async_refresh()`
 (rather than `async_config_entry_first_refresh()`, which additionally
 requires the config entry to be mid-setup — that flow is covered by the
 setup-entry tests in `test_lifecycle.py`). Event emission (Task 9) is
@@ -14,24 +14,24 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.bomberscat.arcgis import ArcgisClientError
-from custom_components.bomberscat.const import (
+from custom_components.incendiscat.arcgis import ArcgisClientError
+from custom_components.incendiscat.const import (
     CONF_ACTIVE_PHASES,
     CONF_MIN_VEHICLES,
     CONF_SUBTIPUS,
     EVENT_FIRE_DETECTED,
     EVENT_FIRE_RESOLVED,
 )
-from custom_components.bomberscat.coordinator import (
-    BomberscatDataUpdateCoordinator,
-    BomberscatRuntimeConfig,
+from custom_components.incendiscat.coordinator import (
+    IncendiscatDataUpdateCoordinator,
+    IncendiscatRuntimeConfig,
     _apply_incident,
     _cleanup_resolved,
     _passes_filters,
     _prune_vanished,
     _should_track,
 )
-from custom_components.bomberscat.models import Fase, Tipus
+from custom_components.incendiscat.models import Fase, Tipus
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import async_capture_events
 
@@ -39,7 +39,7 @@ from .conftest import HOME_LAT, HOME_LON, make_config_entry, make_incident
 
 FAR_AWAY_LAT = HOME_LAT + 10.0  # ~1100 km north: outside any sane track radius
 
-_DEFAULT_CFG = BomberscatRuntimeConfig(
+_DEFAULT_CFG = IncendiscatRuntimeConfig(
     home_lat=HOME_LAT,
     home_lon=HOME_LON,
     track_radius_km=100,
@@ -51,14 +51,14 @@ _DEFAULT_CFG = BomberscatRuntimeConfig(
 )
 
 
-def _coordinator(hass: HomeAssistant, entry=None) -> BomberscatDataUpdateCoordinator:
+def _coordinator(hass: HomeAssistant, entry=None) -> IncendiscatDataUpdateCoordinator:
     entry = entry or make_config_entry()
-    return BomberscatDataUpdateCoordinator(hass, entry, MagicMock(name="session"))
+    return IncendiscatDataUpdateCoordinator(hass, entry, MagicMock(name="session"))
 
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 
@@ -158,7 +158,7 @@ async def test_subtipus_filter_widened_via_legacy_capitalized_options(
     """Legacy (pre-lowercase-slug) stored form: `["VF", "VU"]`.
 
     Entries created before options started storing lowercase slugs have
-    the domain value itself in `entry.options` -- `BomberscatRuntimeConfig
+    the domain value itself in `entry.options` -- `IncendiscatRuntimeConfig
     .from_entry`'s normalization must still resolve these to the same
     domain set as the new form, so old entries keep working unmigrated.
     """
@@ -291,7 +291,7 @@ async def test_fetch_called_with_since_none_every_cycle(hass: HomeAssistant) -> 
     coordinator = _coordinator(hass)
 
     mock_fetch = AsyncMock(side_effect=[[first], [first]])
-    with patch("custom_components.bomberscat.coordinator.fetch_incidents", mock_fetch):
+    with patch("custom_components.incendiscat.coordinator.fetch_incidents", mock_fetch):
         await coordinator.async_refresh()
         assert mock_fetch.call_args_list[0].kwargs["since"] is None
 
@@ -330,10 +330,10 @@ async def test_extingit_in_grace_period_absent_from_fetch_is_pruned_once(
     hass: HomeAssistant,
 ) -> None:
     """An Extingit incident sitting out its removal grace period already
-    fired `bomberscat_fire_resolved` when it turned Extingit. If it then
+    fired `incendiscat_fire_resolved` when it turned Extingit. If it then
     vanishes from a full fetch (e.g. it aged out of the retention window
     before the grace period elapsed), it must be pruned WITHOUT firing a
-    second `bomberscat_fire_resolved`."""
+    second `incendiscat_fire_resolved`."""
     resolved = async_capture_events(hass, EVENT_FIRE_RESOLVED)
     active = make_incident("1", fase=Fase.ACTIU)
     extinguished = make_incident("1", fase=Fase.EXTINGIT)
@@ -357,7 +357,7 @@ async def test_incident_reappearing_after_vanishing_fires_detected_again(
     flakiness, or a genuinely reopened act_num): once an act_num is pruned
     for being absent from a full fetch, the coordinator has no memory that
     it ever existed. If it reappears later it is treated as brand new, so
-    `bomberscat_fire_detected` fires again. This is the simplest option that
+    `incendiscat_fire_detected` fires again. This is the simplest option that
     is still correct -- suppressing it would mean carrying "ghost" state
     forward indefinitely, exactly what full-fetch pruning exists to avoid.
     """
@@ -485,7 +485,7 @@ async def test_incident_without_act_num_is_skipped(
 
 
 # ---------------------------------------------------------------------------
-# BomberscatRuntimeConfig.from_entry: stored-slug -> domain-value normalization
+# IncendiscatRuntimeConfig.from_entry: stored-slug -> domain-value normalization
 # ---------------------------------------------------------------------------
 #
 # `entry.options[CONF_SUBTIPUS]`/`[CONF_ACTIVE_PHASES]` store lowercase slugs
@@ -504,7 +504,7 @@ def test_from_entry_normalizes_new_lowercase_slug_options() -> None:
             CONF_ACTIVE_PHASES: ["actiu", "controlat"],
         }
     )
-    cfg = BomberscatRuntimeConfig.from_entry(entry)
+    cfg = IncendiscatRuntimeConfig.from_entry(entry)
 
     assert cfg.subtipus == {"VF", "VU"}
     assert cfg.active_phases == {"Actiu", "Controlat"}
@@ -522,7 +522,7 @@ def test_from_entry_normalizes_legacy_capitalized_options() -> None:
             CONF_ACTIVE_PHASES: ["Actiu", "Controlat"],
         }
     )
-    cfg = BomberscatRuntimeConfig.from_entry(entry)
+    cfg = IncendiscatRuntimeConfig.from_entry(entry)
 
     assert cfg.subtipus == {"VF", "VU"}
     assert cfg.active_phases == {"Actiu", "Controlat"}
@@ -533,7 +533,7 @@ def test_from_entry_uses_defaults_when_options_unset() -> None:
     `const.DEFAULT_SUBTIPUS`/`DEFAULT_ACTIVE_PHASES` (stored, lowercase-slug
     form) and normalize them the same way as explicit options."""
     entry = make_config_entry()
-    cfg = BomberscatRuntimeConfig.from_entry(entry)
+    cfg = IncendiscatRuntimeConfig.from_entry(entry)
 
     assert cfg.subtipus == {"VF"}
     assert cfg.active_phases == {"Actiu", "Estabilitzat"}

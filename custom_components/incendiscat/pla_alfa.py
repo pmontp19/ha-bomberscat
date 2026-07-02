@@ -68,7 +68,7 @@ from .const import (
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
-    from . import BomberscatConfigEntry
+    from . import IncendiscatConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -302,7 +302,7 @@ async def fetch_risk(
 class PlaAlfaCoordinator(DataUpdateCoordinator[PlaAlfaRisk]):
     """Polls Pla Alfa for `zone.home`'s fire-risk level.
 
-    Deliberately independent from `BomberscatDataUpdateCoordinator`
+    Deliberately independent from `IncendiscatDataUpdateCoordinator`
     (acceptance criterion: "Pla Alfa caigut no afecta el polling
     d'incendis"): separate coordinator instance,
     separate `update_interval` (see `PLA_ALFA_SCAN_INTERVAL_HOURS`), and a
@@ -317,7 +317,7 @@ class PlaAlfaCoordinator(DataUpdateCoordinator[PlaAlfaRisk]):
     def __init__(
         self,
         hass: HomeAssistant,
-        entry: BomberscatConfigEntry,
+        entry: IncendiscatConfigEntry,
         session: aiohttp.ClientSession,
     ) -> None:
         super().__init__(

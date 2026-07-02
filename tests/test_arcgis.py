@@ -8,7 +8,7 @@ from pathlib import Path
 import aiohttp
 import pytest
 from aioresponses import CallbackResult, aioresponses
-from custom_components.bomberscat.arcgis import (
+from custom_components.incendiscat.arcgis import (
     MAX_ATTEMPTS,
     MAX_ERROR_BODY_CHARS,
     MAX_PAGES,
@@ -19,8 +19,8 @@ from custom_components.bomberscat.arcgis import (
     _since_where_clause,
     fetch_incidents,
 )
-from custom_components.bomberscat.const import BOMBERS_LIVE_URL
-from custom_components.bomberscat.models import Fase, Tipus
+from custom_components.incendiscat.const import BOMBERS_LIVE_URL
+from custom_components.incendiscat.models import Fase, Tipus
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 QUERY_URL_PATTERN = re.compile(re.escape(f"{BOMBERS_LIVE_URL}/query") + r".*")

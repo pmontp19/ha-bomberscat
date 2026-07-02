@@ -1,6 +1,6 @@
 # Integracions de referència
 
-Anàlisi de les dues integracions HACS existents per a seguiment d'incendis. En treurem el millor cadascuna per al disseny de `ha-bomberscat`.
+Anàlisi de les dues integracions HACS existents per a seguiment d'incendis. En treurem el millor cadascuna per al disseny de `ha-incendiscat`.
 
 **Recerca prèvia**: no existeix cap integració al nucli de Home Assistant per a incendis forestals. L'única integració "fire" al core és `intellifire`, que és per a **xemeneies connectades**, no boscos.
 
@@ -179,7 +179,7 @@ La notificació inclou tipus, ubicació, distància, severitat.
 
 ## 3. Comparativa directa
 
-| Feature | wildfire-monitor | pyrovigil | **ha-bomberscat (objectiu)** |
+| Feature | wildfire-monitor | pyrovigil | **ha-incendiscat (objectiu)** |
 | --- | :---: | :---: | :---: |
 | Font | REST | ArcGIS FS | **ArcGIS FS** (com pyrovigil) |
 | Sense clau | ✅ | ✅ | ✅ |

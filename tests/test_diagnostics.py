@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.arcgis import ArcgisClientError
-from custom_components.bomberscat.diagnostics import (
+from custom_components.incendiscat.arcgis import ArcgisClientError
+from custom_components.incendiscat.diagnostics import (
     async_get_config_entry_diagnostics,
 )
 from homeassistant.components.diagnostics import REDACTED
@@ -16,7 +16,7 @@ from .conftest import make_config_entry, make_incident
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 

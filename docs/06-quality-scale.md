@@ -1,4 +1,4 @@
-# Quality Scale — `ha-bomberscat`
+# Quality Scale — `ha-incendiscat`
 
 Apliquem la **[Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)** oficial de Home Assistant amb filtre **KISS i sentit comú**:
 
@@ -6,7 +6,7 @@ Apliquem la **[Integration Quality Scale](https://developers.home-assistant.io/d
 - **No** aspirem a PR a `home-assistant/core` (la font no és API oficialment suportada) → no cal platinum al 100%.
 - **Distribució**: HACS Custom Repository. Però la qualitat del codi ha de ser la mateixa que si fos core.
 
-L'estat de cada regla es declara a [`custom_components/bomberscat/quality_scale.yaml`](../custom_components/bomberscat/quality_scale.yaml) (format oficial HA — hassfest valida que estigui present i ben format).
+L'estat de cada regla es declara a [`custom_components/incendiscat/quality_scale.yaml`](../custom_components/incendiscat/quality_scale.yaml) (format oficial HA — hassfest valida que estigui present i ben format).
 
 **Llegenda**: ✅ `done` · ⏳ `todo` (prioritzat més avall) · 🚫 `exempt` (no aplica, amb raó)
 
@@ -62,10 +62,10 @@ Quan una regla és `exempt`, **sempre** portem un comentari d'una línia explica
 | `brands` | M | `icon.png` 256×256 + `logo.png` per la marca. Necessari per aparèixer a HACS amb thumbnail. |
 | `test_before_configure` | S | Al config flow, fer un GET petit al FeatureServer (`?resultRecordCount=1`) per validar abans de guardar l'entry |
 | `unique_config_entry` | XS | `async_abort_if_unique_entry_configured()` al config flow |
-| `docs_high_level_description` | S | Secció inicial del README explicant què és Bombers de Catalunya |
+| `docs_high_level_description` | S | Secció inicial del README explicant què és Incendis Catalunya |
 | `docs_installation_instructions` | S | Secció "Instal·lació via HACS" pas a pas |
 | `docs_removal_instructions` | XS | Secció "Eliminar" al README |
-| `docs_triggers` | S | Documentar els events `bomberscat_fire_detected`/`_resolved`/`_phase_change` per a `trigger` |
+| `docs_triggers` | S | Documentar els events `incendiscat_fire_detected`/`_resolved`/`_phase_change` per a `trigger` |
 | `docs_conditions` | S | Documentar com fer condicions amb els attributes (p.ex. `state_attr(...).fase == 'Actiu'`) |
 
 ### 🚫 Exempts
@@ -114,7 +114,7 @@ Quan una regla és `exempt`, **sempre** portem un comentari d'una línia explica
 
 | Regla | Com |
 | --- | --- |
-| `devices` | Una device "Bombers de Catalunya" per config entry, amb `DeviceInfo` |
+| `devices` | Una device "Incendis Catalunya" per config entry, amb `DeviceInfo` |
 | `entity_translations` | `translation_key` + `translations/{ca,es,en}.json` |
 | `reconfiguration_flow` | `async_step_reconfigure` al config flow (HA ≥ 2024.4) |
 
@@ -210,7 +210,7 @@ Quan una regla és `exempt`, **sempre** portem un comentari d'una línia explica
 
 | Descart | Raó |
 | --- | --- |
-| Service actions (`bomberscat.refresh`, etc.) | El patró bus events + blueprint cobreix el 99% dels casos i és més idiomàtic |
+| Service actions (`incendiscat.refresh`, etc.) | El patró bus events + blueprint cobreix el 99% dels casos i és més idiomàtic |
 | Local discovery | No tenim res a descobrir a la xarxa |
 | 95% coverage global | Els platforms UI tenen poc valor de test; millor 95% al core i 70% als platforms |
 | Platinum al 100% sense PR a core | Inversió de mypy--strict per tot té poc ROI si no es revisa un core maintainer |

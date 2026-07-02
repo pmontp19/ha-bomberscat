@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from custom_components.bomberscat.geo import (
+from custom_components.incendiscat.geo import (
     EARTH_RADIUS_KM,
     filter_by_radius,
     haversine_km,

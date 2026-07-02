@@ -1,4 +1,4 @@
-"""Diagnostics support for bomberscat.
+"""Diagnostics support for incendiscat.
 
 Backs the "Download diagnostics" button HA's core `diagnostics` component
 adds to every config entry once this module exists (no manifest change
@@ -23,16 +23,16 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE
 from homeassistant.core import HomeAssistant
 
-from . import BomberscatConfigEntry
+from . import IncendiscatConfigEntry
 from .coordinator import last_update_status
 
 TO_REDACT = {CONF_LATITUDE, CONF_LONGITUDE}
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: BomberscatConfigEntry
+    hass: HomeAssistant, entry: IncendiscatConfigEntry
 ) -> dict[str, Any]:
-    """Return diagnostics for a bomberscat config entry."""
+    """Return diagnostics for a incendiscat config entry."""
     coordinator = entry.runtime_data
     state = coordinator.data
     pla_alfa = coordinator.pla_alfa

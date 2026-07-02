@@ -1,4 +1,4 @@
-"""Tests for `blueprints/automation/bomberscat_fire_notification.yaml` (Task 15).
+"""Tests for `blueprints/automation/incendiscat_fire_notification.yaml` (Task 15).
 
 Two layers of validation:
 
@@ -7,7 +7,7 @@ Two layers of validation:
 2. Behavioural: the blueprint is loaded through Home Assistant's real
    blueprint machinery (`homeassistant.components.blueprint`), substituted
    with concrete inputs, installed as an actual `automation` entity, and
-   exercised by firing `bomberscat_fire_detected` / `_resolved` /
+   exercised by firing `incendiscat_fire_detected` / `_resolved` /
    `_phase_change` events on `hass.bus` — then we assert on the resulting
    calls to the `notify_service` action, the same way a real installation
    would be verified manually (per the task's "Test manual amb events
@@ -35,7 +35,7 @@ BLUEPRINT_PATH = str(
     Path(__file__).resolve().parent.parent
     / "blueprints"
     / "automation"
-    / "bomberscat_fire_notification.yaml"
+    / "incendiscat_fire_notification.yaml"
 )
 
 EXPECTED_INPUTS = {
@@ -86,9 +86,9 @@ def test_blueprint_metadata() -> None:
     raw = _load_raw()
     meta = raw["blueprint"]
     assert meta["domain"] == "automation"
-    assert "Bombers de Catalunya" in meta["name"]
+    assert "Incendis Catalunya" in meta["name"]
     assert meta["source_url"].startswith(
-        "https://github.com/pmontp19/ha-bomberscat/blob/main/"
+        "https://github.com/pmontp19/ha-incendiscat/blob/main/"
     )
     assert "homeassistant" in meta
     assert "min_version" in meta["homeassistant"]
@@ -120,8 +120,8 @@ def test_blueprint_declares_all_required_inputs() -> None:
     assert inputs["include_phase_changes"]["default"] is False
 
     map_options = inputs["open_map_url"]["selector"]["select"]["options"]
-    assert map_options == ["bomberscat", "google_maps", "osm"]
-    assert inputs["open_map_url"]["default"] == "bomberscat"
+    assert map_options == ["incendiscat", "google_maps", "osm"]
+    assert inputs["open_map_url"]["default"] == "incendiscat"
 
 
 def test_blueprint_triggers_on_all_three_events() -> None:
@@ -129,9 +129,9 @@ def test_blueprint_triggers_on_all_three_events() -> None:
     raw = _load_raw()
     event_types = {t["event_type"] for t in raw["triggers"]}
     assert event_types == {
-        "bomberscat_fire_detected",
-        "bomberscat_fire_resolved",
-        "bomberscat_phase_change",
+        "incendiscat_fire_detected",
+        "incendiscat_fire_resolved",
+        "incendiscat_phase_change",
     }
 
 
@@ -195,7 +195,9 @@ async def _install_automation(
     """Install the blueprint as a live automation and return captured calls."""
 
     def _copy_blueprint() -> None:
-        blueprint_dir = Path(hass.config.path("blueprints", "automation", "bomberscat"))
+        blueprint_dir = Path(
+            hass.config.path("blueprints", "automation", "incendiscat")
+        )
         blueprint_dir.mkdir(parents=True, exist_ok=True)
         dest = blueprint_dir / "notification.yaml"
         dest.write_text(
@@ -215,7 +217,7 @@ async def _install_automation(
                 {
                     "alias": alias,
                     "use_blueprint": {
-                        "path": "bomberscat/notification.yaml",
+                        "path": "incendiscat/notification.yaml",
                         "input": user_inputs,
                     },
                 }
@@ -246,7 +248,7 @@ async def test_fire_detected_notifies_with_default_inputs(hass: HomeAssistant) -
     calls = await _install_automation(
         hass, alias="detected_default", user_inputs={"notify_service": "notify.notify"}
     )
-    hass.bus.async_fire("bomberscat_fire_detected", DETECTED_PAYLOAD)
+    hass.bus.async_fire("incendiscat_fire_detected", DETECTED_PAYLOAD)
     await hass.async_block_till_done()
 
     assert len(calls) == 1
@@ -268,7 +270,7 @@ async def test_fire_detected_filtered_out_by_minimum_vehicles(
         alias="detected_min_vehicles",
         user_inputs={"notify_service": "notify.notify", "minimum_vehicles": 10},
     )
-    hass.bus.async_fire("bomberscat_fire_detected", DETECTED_PAYLOAD)
+    hass.bus.async_fire("incendiscat_fire_detected", DETECTED_PAYLOAD)
     await hass.async_block_till_done()
     assert calls == []
 
@@ -282,7 +284,7 @@ async def test_fire_detected_filtered_out_by_maximum_distance(
         alias="detected_max_distance",
         user_inputs={"notify_service": "notify.notify", "maximum_distance": 5},
     )
-    hass.bus.async_fire("bomberscat_fire_detected", DETECTED_PAYLOAD)
+    hass.bus.async_fire("incendiscat_fire_detected", DETECTED_PAYLOAD)
     await hass.async_block_till_done()
     assert calls == []
 
@@ -293,7 +295,7 @@ async def test_fire_resolved_ignored_by_default(hass: HomeAssistant) -> None:
         hass, alias="resolved_default", user_inputs={"notify_service": "notify.notify"}
     )
     hass.bus.async_fire(
-        "bomberscat_fire_resolved",
+        "incendiscat_fire_resolved",
         {
             "act_num": "2026-001",
             "municipi": "Sant Quirze Safaja",
@@ -313,7 +315,7 @@ async def test_fire_resolved_notifies_when_enabled(hass: HomeAssistant) -> None:
         user_inputs={"notify_service": "notify.notify", "include_resolved": True},
     )
     hass.bus.async_fire(
-        "bomberscat_fire_resolved",
+        "incendiscat_fire_resolved",
         {
             "act_num": "2026-001",
             "municipi": "Sant Quirze Safaja",
@@ -342,7 +344,7 @@ async def test_phase_change_notifies_when_enabled(hass: HomeAssistant) -> None:
         },
     )
     hass.bus.async_fire(
-        "bomberscat_phase_change",
+        "incendiscat_phase_change",
         {
             "act_num": "2026-001",
             "municipi": "Sant Quirze Safaja",
@@ -365,7 +367,7 @@ async def test_critical_alert_sets_push_payload(hass: HomeAssistant) -> None:
         alias="critical_alert",
         user_inputs={"notify_service": "notify.notify", "critical_alert": True},
     )
-    hass.bus.async_fire("bomberscat_fire_detected", DETECTED_PAYLOAD)
+    hass.bus.async_fire("incendiscat_fire_detected", DETECTED_PAYLOAD)
     await hass.async_block_till_done()
 
     assert len(calls) == 1

@@ -1,10 +1,10 @@
-"""Constants for the Bombers de Catalunya (bomberscat) integration.
+"""Constants for the Incendis Catalunya (incendiscat) integration.
 
 Endpoint URLs are taken from docs/01-data-sources.md §9 ("Endpoints públics
 definitius"). Config defaults are taken from docs/03-feature-spec.md §2.
 """
 
-DOMAIN = "bomberscat"
+DOMAIN = "incendiscat"
 
 # ---------------------------------------------------------------------------
 # ArcGIS FeatureServer endpoints (all served from the same AGO organization)
@@ -53,19 +53,19 @@ BOMBERS_VIEWER_URL = (
 # Events fired on hass.bus (docs/03-feature-spec.md §4)
 # ---------------------------------------------------------------------------
 
-EVENT_FIRE_DETECTED = "bomberscat_fire_detected"
-EVENT_FIRE_RESOLVED = "bomberscat_fire_resolved"
-EVENT_PHASE_CHANGE = "bomberscat_phase_change"
+EVENT_FIRE_DETECTED = "incendiscat_fire_detected"
+EVENT_FIRE_RESOLVED = "incendiscat_fire_resolved"
+EVENT_PHASE_CHANGE = "incendiscat_phase_change"
 
 # Fired once (not every cycle) when the FeatureServer has failed with a
 # schema/URL-change signature (persistent 4xx/404) `DEGRADED_FAILURE_THRESHOLD`
 # times in a row — see coordinator.py and docs/04-architecture.md §9.
-EVENT_SERVICE_DEGRADED = "bomberscat_service_degraded"
+EVENT_SERVICE_DEGRADED = "incendiscat_service_degraded"
 
 # Kept in sync manually with manifest.json's `issue_tracker`: used as the
 # repair issue's `learn_more_url` so a persistently-degraded
 # FeatureServer points the user at somewhere to report it.
-GITHUB_ISSUES_URL = "https://github.com/pmontp19/ha-bomberscat/issues"
+GITHUB_ISSUES_URL = "https://github.com/pmontp19/ha-incendiscat/issues"
 
 # ---------------------------------------------------------------------------
 # Config flow / options keys
@@ -102,7 +102,7 @@ MAX_SCAN_INTERVAL_MIN = 60
 # selector option values (which double as translation keys here) to match
 # `[a-z0-9-_]+`. The domain values used everywhere else (models.Tipus,
 # events, geo_location attributes) stay uppercase ("VF"/"VA"/"VU");
-# `BomberscatRuntimeConfig.from_entry` (coordinator.py) is the single place
+# `IncendiscatRuntimeConfig.from_entry` (coordinator.py) is the single place
 # that maps stored slugs back to domain values.
 DEFAULT_SUBTIPUS = ["vf"]
 

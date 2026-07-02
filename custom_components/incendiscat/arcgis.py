@@ -1,4 +1,4 @@
-"""Async client for the Bombers de Catalunya ArcGIS FeatureServer.
+"""Async client for the Bombers de la Generalitat ArcGIS FeatureServer.
 
 Wraps `aiohttp` (already a Home Assistant core dependency, per
 docs/04-architecture.md §2 — `requirements: []`). Responsibilities:
@@ -90,7 +90,7 @@ class ArcgisClientError(Exception):
     classify a failure without parsing the message string — used by
     `coordinator.py` to (a) derive `sensor.last_update_status` and (b) count
     consecutive schema/URL-change-signature failures towards
-    `bomberscat_service_degraded`. `kind` is one of:
+    `incendiscat_service_degraded`. `kind` is one of:
 
     - `"http_404"` / `"http_4xx"`: a 4xx response (no retry attempted).
       `404` gets its own bucket since it is the specific "URL changed"

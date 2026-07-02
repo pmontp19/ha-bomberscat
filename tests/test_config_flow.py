@@ -1,4 +1,4 @@
-"""Tests for the bomberscat config flow.
+"""Tests for the incendiscat config flow.
 
 Task 4 covered step 1 (location + radii). Task 11 adds step 2 (filters,
 stored as entry *options*), the options flow (edit those + the high-risk
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.const import (
+from custom_components.incendiscat.const import (
     CONF_ACTIVE_PHASES,
     CONF_ALERT_RADIUS,
     CONF_HIGH_RISK_THRESHOLD,
@@ -78,7 +78,7 @@ async def test_happy_path_creates_entry(hass: HomeAssistant) -> None:
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["title"] == "Bombers de Catalunya"
+    assert result["title"] == "Incendis Catalunya"
     assert result["data"] == {
         CONF_LATITUDE: 41.5,
         CONF_LONGITUDE: 2.1,
@@ -234,7 +234,7 @@ async def test_options_flow_updates_entry_and_reloads(hass: HomeAssistant) -> No
     entry = make_config_entry()
     entry.add_to_hass(hass)
     with patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(return_value=[]),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id) is True
@@ -282,7 +282,7 @@ async def test_reconfigure_updates_location_and_radii(hass: HomeAssistant) -> No
     original_entry_id = entry.entry_id
 
     with patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(return_value=[]),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id) is True

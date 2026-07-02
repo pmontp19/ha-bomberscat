@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bombers de Catalunya",
+        "title": "Incendis Catalunya",
         "description": "Definiu la ubicació a vigilar i els dos radis de seguiment. Podeu arrossegar el marcador i redimensionar el cercle al mapa; tots dos prenen per defecte la ubicació de casa d'Home Assistant.",
         "data": {
           "location": "[%key:common::config_flow::data::location%]",
@@ -30,7 +30,7 @@
         }
       },
       "reconfigure": {
-        "title": "Bombers de Catalunya",
+        "title": "Incendis Catalunya",
         "description": "Moveu la ubicació vigilada o canvieu els radis de seguiment. Podeu arrossegar el marcador i redimensionar el cercle al mapa.",
         "data": {
           "location": "[%key:common::config_flow::data::location%]",
@@ -53,7 +53,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Opcions de Bombers de Catalunya",
+        "title": "Opcions d'Incendis Catalunya",
         "description": "Canvieu els filtres d'incidents, l'interval de sondeig i el llindar de risc alt.",
         "data": {
           "subtipus": "Subtipus d'incident",
@@ -91,7 +91,7 @@
   },
   "issues": {
     "service_degraded": {
-      "title": "Bombers de Catalunya no pot connectar amb el FeatureServer",
+      "title": "Incendis Catalunya no pot connectar amb el FeatureServer",
       "description": "La integració ha fallat en consultar el FeatureServer dels Bombers diverses vegades seguides amb un error que suggereix que l'adreça o l'esquema han canviat: {error}. Les dades d'incendis poden quedar desactualitzades fins que això es resolgui. Obriu una incidència al repositori de GitHub de la integració amb aquests detalls."
     }
   },

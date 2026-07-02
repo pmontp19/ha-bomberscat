@@ -1,4 +1,4 @@
-"""Sensor platform for bomberscat: aggregated wildfire sensors,
+"""Sensor platform for incendiscat: aggregated wildfire sensors,
 plus 2 of the 3 diagnostic entities (`last_update`,
 `last_update_status`; the third, `service_connected`, is a binary_sensor).
 
@@ -6,12 +6,12 @@ Implements the 6 aggregated sensors of docs/03-feature-spec.md §3.2-§3.7:
 `active_fires`, `nearest_fire_distance`, `nearest_fire_municipi`,
 `fires_per_fase`, `fires_per_tipus`, `total_vehicles`. All are
 `CoordinatorEntity` subclasses sharing one `DeviceInfo` per
-docs/04-architecture.md §7 ("Bombers de Catalunya").
+docs/04-architecture.md §7 ("Incendis Catalunya").
 
 "Active" vs "tracked" (design note, since the spec's wording is ambiguous
 about which incidents each sensor should count):
 
-`BomberscatState.incidents` (see coordinator.py) holds two kinds of rows:
+`IncendiscatState.incidents` (see coordinator.py) holds two kinds of rows:
 incidents whose phase is in the user's configured `active_phases`, *plus*
 incidents that just turned `Extingit` and are sitting out their removal
 grace period (kept around so `geo_location` entities don't flicker away
@@ -55,10 +55,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import BomberscatConfigEntry
+from . import IncendiscatConfigEntry
 from .coordinator import (
-    BomberscatDataUpdateCoordinator,
-    BomberscatState,
+    IncendiscatDataUpdateCoordinator,
+    IncendiscatState,
     last_update_status,
 )
 from .entity import device_info
@@ -83,7 +83,7 @@ _DEFAULT_RISK_ICON = "mdi:help-rhombus"
 
 
 def _active_incidents(
-    state: BomberscatState, active_phases: frozenset[str]
+    state: IncendiscatState, active_phases: frozenset[str]
 ) -> list[Incident]:
     """Tracked incidents whose phase is in the user's `active_phases`.
 
@@ -94,7 +94,7 @@ def _active_incidents(
 
 
 def _nearest(
-    incidents: list[Incident], coordinator: BomberscatDataUpdateCoordinator
+    incidents: list[Incident], coordinator: IncendiscatDataUpdateCoordinator
 ) -> Incident | None:
     """The closest incident to home, or `None` if `incidents` is empty."""
     if not incidents:
@@ -102,10 +102,10 @@ def _nearest(
     return min(incidents, key=coordinator.distance_km)
 
 
-class BomberscatEntity(CoordinatorEntity[BomberscatDataUpdateCoordinator]):
-    """Base for all bomberscat sensor entities: shared device + naming.
+class IncendiscatEntity(CoordinatorEntity[IncendiscatDataUpdateCoordinator]):
+    """Base for all incendiscat sensor entities: shared device + naming.
 
-    Mirrors the `BomberscatEntity` sketch in docs/04-architecture.md §7.
+    Mirrors the `IncendiscatEntity` sketch in docs/04-architecture.md §7.
     `device_info()` (shared with `binary_sensor.py` via `entity.py`) is the
     only piece factored out to a common module — the rest (unique_id
     scheme, translation_key wiring) differs enough per platform that a
@@ -116,8 +116,8 @@ class BomberscatEntity(CoordinatorEntity[BomberscatDataUpdateCoordinator]):
 
     def __init__(
         self,
-        coordinator: BomberscatDataUpdateCoordinator,
-        entry: BomberscatConfigEntry,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
         key: str,
     ) -> None:
         super().__init__(coordinator)
@@ -126,25 +126,27 @@ class BomberscatEntity(CoordinatorEntity[BomberscatDataUpdateCoordinator]):
         self._attr_device_info = device_info(entry)
 
 
-class ActiveFiresSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_active_fires` (docs/03-feature-spec.md §3.2)."""
+class ActiveFiresSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_active_fires` (docs/03-feature-spec.md §3.2)."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = FIRES_UNIT
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "active_fires")
 
     @property
     def native_value(self) -> int:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         return len(_active_incidents(state, self.coordinator.config.active_phases))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         cfg = self.coordinator.config
         active = _active_incidents(state, cfg.active_phases)
         in_alert_radius = sum(
@@ -160,8 +162,8 @@ class ActiveFiresSensor(BomberscatEntity, SensorEntity):
         }
 
 
-class NearestFireDistanceSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_nearest_fire_distance` (feature-spec §3.3).
+class NearestFireDistanceSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_nearest_fire_distance` (feature-spec §3.3).
 
     See the module docstring for the `-1` sentinel design note.
     """
@@ -171,13 +173,15 @@ class NearestFireDistanceSensor(BomberscatEntity, SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "nearest_fire_distance")
 
     @property
     def native_value(self) -> float:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         active = _active_incidents(state, self.coordinator.config.active_phases)
         nearest = _nearest(active, self.coordinator)
         if nearest is None:
@@ -185,17 +189,19 @@ class NearestFireDistanceSensor(BomberscatEntity, SensorEntity):
         return round(self.coordinator.distance_km(nearest), 1)
 
 
-class NearestFireMunicipiSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_nearest_fire_municipi` (feature-spec §3.4)."""
+class NearestFireMunicipiSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_nearest_fire_municipi` (feature-spec §3.4)."""
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "nearest_fire_municipi")
 
     @property
     def native_value(self) -> str:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         active = _active_incidents(state, self.coordinator.config.active_phases)
         nearest = _nearest(active, self.coordinator)
         if nearest is None:
@@ -203,8 +209,8 @@ class NearestFireMunicipiSensor(BomberscatEntity, SensorEntity):
         return nearest.municipi or NO_MUNICIPI
 
 
-class FiresPerFaseSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_fires_per_fase` (feature-spec §3.5).
+class FiresPerFaseSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_fires_per_fase` (feature-spec §3.5).
 
     Counts *tracked* incidents (see module docstring), including
     grace-period `Extingit` ones, so the `extingit` attribute is
@@ -215,12 +221,14 @@ class FiresPerFaseSensor(BomberscatEntity, SensorEntity):
     _attr_native_unit_of_measurement = FIRES_UNIT
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "fires_per_fase")
 
     def _counts(self) -> Counter[Fase]:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         return Counter(inc.fase for inc in state.incidents.values())
 
     @property
@@ -249,20 +257,22 @@ class FiresPerFaseSensor(BomberscatEntity, SensorEntity):
         return FASE_ICONS[dominant]
 
 
-class FiresPerTipusSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_fires_per_tipus` (feature-spec §3.6). Tracked, not
+class FiresPerTipusSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_fires_per_tipus` (feature-spec §3.6). Tracked, not
     just active — see `FiresPerFaseSensor`'s docstring."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = FIRES_UNIT
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "fires_per_tipus")
 
     def _counts(self) -> Counter[Tipus]:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         return Counter(inc.tipus for inc in state.incidents.values())
 
     @property
@@ -287,30 +297,32 @@ class FiresPerTipusSensor(BomberscatEntity, SensorEntity):
         return TIPUS_ICONS[dominant]
 
 
-class TotalVehiclesSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_total_vehicles` (feature-spec §3.7): Σ `ACT_NUM_VEH`
+class TotalVehiclesSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_total_vehicles` (feature-spec §3.7): Σ `ACT_NUM_VEH`
     over *tracked* incidents (see module docstring)."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "total_vehicles")
 
     @property
     def native_value(self) -> int:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         return sum(inc.vehicles for inc in state.incidents.values())
 
 
 class FireRiskSensor(CoordinatorEntity[PlaAlfaCoordinator], SensorEntity):
-    """`sensor.bomberscat_fire_risk` (feature-spec §3.8).
+    """`sensor.incendiscat_fire_risk` (feature-spec §3.8).
 
-    Backed by `PlaAlfaCoordinator`, not `BomberscatDataUpdateCoordinator` —
-    hence it does not subclass `BomberscatEntity` (typed for the latter) —
+    Backed by `PlaAlfaCoordinator`, not `IncendiscatDataUpdateCoordinator` —
+    hence it does not subclass `IncendiscatEntity` (typed for the latter) —
     but shares the same `DeviceInfo` (see `entity.device_info`) so it shows
-    up under the same "Bombers de Catalunya" device.
+    up under the same "Incendis Catalunya" device.
 
     Availability follows `CoordinatorEntity`'s default (`coordinator
     .last_update_success`): when Pla Alfa is down (including a failed first
@@ -324,7 +336,7 @@ class FireRiskSensor(CoordinatorEntity[PlaAlfaCoordinator], SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-        self, coordinator: PlaAlfaCoordinator, entry: BomberscatConfigEntry
+        self, coordinator: PlaAlfaCoordinator, entry: IncendiscatConfigEntry
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_fire_risk"
@@ -357,8 +369,8 @@ class FireRiskSensor(CoordinatorEntity[PlaAlfaCoordinator], SensorEntity):
         }
 
 
-class LastUpdateSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_last_update` (feature-spec §3.11):
+class LastUpdateSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_last_update` (feature-spec §3.11):
     timestamp of the last *successful* sync.
 
     `available` is overridden to always be `True` for the same reason as
@@ -371,7 +383,9 @@ class LastUpdateSensor(BomberscatEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "last_update")
 
@@ -381,12 +395,12 @@ class LastUpdateSensor(BomberscatEntity, SensorEntity):
 
     @property
     def native_value(self) -> datetime | None:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         return state.last_success
 
 
-class LastUpdateStatusSensor(BomberscatEntity, SensorEntity):
-    """`sensor.bomberscat_last_update_status` (feature-spec §3.11):
+class LastUpdateStatusSensor(IncendiscatEntity, SensorEntity):
+    """`sensor.incendiscat_last_update_status` (feature-spec §3.11):
     `"success"` or `"error_<code>"` — see `coordinator.last_update_status()`
     for the classification. `available` always `True`, same rationale as
     `LastUpdateSensor` above.
@@ -395,7 +409,9 @@ class LastUpdateStatusSensor(BomberscatEntity, SensorEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, entry: BomberscatConfigEntry
+        self,
+        coordinator: IncendiscatDataUpdateCoordinator,
+        entry: IncendiscatConfigEntry,
     ) -> None:
         super().__init__(coordinator, entry, "last_update_status")
 
@@ -405,16 +421,16 @@ class LastUpdateStatusSensor(BomberscatEntity, SensorEntity):
 
     @property
     def native_value(self) -> str:
-        state: BomberscatState = self.coordinator.data
+        state: IncendiscatState = self.coordinator.data
         return last_update_status(state)
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: BomberscatConfigEntry,
+    entry: IncendiscatConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up bomberscat sensors from a config entry."""
+    """Set up incendiscat sensors from a config entry."""
     coordinator = entry.runtime_data
     async_add_entities(
         [

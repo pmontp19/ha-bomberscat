@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Bombers de Catalunya",
+        "title": "Incendis Catalunya",
         "description": "Set the location to monitor and the two tracking radii. You can drag the marker and resize the circle on the map; both default to your Home Assistant home location.",
         "data": {
           "location": "[%key:common::config_flow::data::location%]",
@@ -30,7 +30,7 @@
         }
       },
       "reconfigure": {
-        "title": "Bombers de Catalunya",
+        "title": "Incendis Catalunya",
         "description": "Move the monitored location or change the tracking radii. You can drag the marker and resize the circle on the map.",
         "data": {
           "location": "[%key:common::config_flow::data::location%]",
@@ -53,7 +53,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Bombers de Catalunya options",
+        "title": "Incendis Catalunya options",
         "description": "Change the incident filters, polling interval and the high-risk threshold.",
         "data": {
           "subtipus": "Incident subtypes",
@@ -91,7 +91,7 @@
   },
   "issues": {
     "service_degraded": {
-      "title": "Bombers de Catalunya can't reach the FeatureServer",
+      "title": "Incendis Catalunya can't reach the FeatureServer",
       "description": "The integration has failed to query the Bombers FeatureServer several times in a row with an error suggesting its address or schema has changed: {error}. Wildfire data may be stale until this is fixed. Please open an issue on the integration's GitHub repository with these details."
     }
   },

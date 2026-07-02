@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.models import Fase
+from custom_components.incendiscat.models import Fase
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
@@ -19,9 +19,9 @@ from .conftest import HOME_LAT, HOME_LON, make_config_entry, make_incident
 
 # Entity naming: `_attr_translation_key = "fire_nearby"` resolves via
 # `translations/en.json`'s "entity.binary_sensor.fire_nearby.name" (Task 14)
-# to "Fire nearby", combined with the device name ("Bombers de Catalunya")
+# to "Fire nearby", combined with the device name ("Incendis Catalunya")
 # through `has_entity_name = True` into this object_id.
-ENTITY_ID = "binary_sensor.bombers_de_catalunya_fire_nearby"
+ENTITY_ID = "binary_sensor.incendis_catalunya_fire_nearby"
 
 # ~11 km north of home: inside a 30 km alert radius, inside a 100 km track radius.
 INSIDE_ALERT_LAT = HOME_LAT + 0.1
@@ -32,7 +32,7 @@ INSIDE_TRACK_ONLY_LAT = HOME_LAT + 0.5
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 

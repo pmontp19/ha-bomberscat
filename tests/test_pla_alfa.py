@@ -7,18 +7,18 @@ import re
 import aiohttp
 import pytest
 from aioresponses import CallbackResult, aioresponses
-from custom_components.bomberscat import arcgis
-from custom_components.bomberscat.arcgis import (
+from custom_components.incendiscat import arcgis
+from custom_components.incendiscat.arcgis import (
     MAX_ATTEMPTS,
     REQUEST_TIMEOUT,
     RETRY_BACKOFFS_SECONDS,
 )
-from custom_components.bomberscat.const import (
+from custom_components.incendiscat.const import (
     PLA_ALFA_COM_AVUI_URL,
     PLA_ALFA_MUNI_AVUI_URL,
     PLA_ALFA_MUNI_DEMA_URL,
 )
-from custom_components.bomberscat.pla_alfa import (
+from custom_components.incendiscat.pla_alfa import (
     ArcgisClientError,
     PlaAlfaRisk,
     _nivell_text,

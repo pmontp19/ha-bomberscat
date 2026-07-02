@@ -35,7 +35,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           .venv/bin/python -m pytest tests/ \
-            --cov=custom_components/bomberscat \
+            --cov=custom_components/incendiscat \
             --cov-report=xml \
             --cov-report=term-missing \
             --cov-fail-under=95

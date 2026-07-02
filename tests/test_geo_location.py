@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.const import BOMBERS_VIEWER_URL
-from custom_components.bomberscat.models import Fase, Tipus
+from custom_components.incendiscat.const import BOMBERS_VIEWER_URL
+from custom_components.incendiscat.models import Fase, Tipus
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -23,7 +23,7 @@ from .conftest import HOME_LAT, HOME_LON, FakeClock, make_config_entry, make_inc
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 
@@ -39,11 +39,11 @@ async def _setup(hass: HomeAssistant, *fetch_results, entry=None):
 
 
 def _geo_location_states(hass: HomeAssistant):
-    """All `geo_location.*` states whose `source` is `bomberscat`."""
+    """All `geo_location.*` states whose `source` is `incendiscat`."""
     return [
         state
         for state in hass.states.async_all("geo_location")
-        if state.attributes.get("source") == "bomberscat"
+        if state.attributes.get("source") == "incendiscat"
     ]
 
 
@@ -100,7 +100,7 @@ async def test_full_attribute_set_matches_feature_spec(hass: HomeAssistant) -> N
     attrs = state.attributes
 
     # docs/03-feature-spec.md §3.1's full attribute table.
-    assert attrs["source"] == "bomberscat"
+    assert attrs["source"] == "incendiscat"
     assert attrs["latitude"] == round(inc.lat, 5)
     assert attrs["longitude"] == round(inc.lon, 5)
     assert attrs["act_num"] == "262311630"

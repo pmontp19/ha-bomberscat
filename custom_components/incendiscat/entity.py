@@ -1,7 +1,7 @@
-"""Shared `DeviceInfo` helper for bomberscat entities.
+"""Shared `DeviceInfo` helper for incendiscat entities.
 
 `sensor.py` and `binary_sensor.py` entities all belong to the integration's
-single "Bombers de Catalunya" service device (`geo_location` is the
+single "Incendis Catalunya" service device (`geo_location` is the
 exception — it models external per-incident events, not a sub-component of
 the service device, per `geo_location.py`'s module docstring, so it has no
 `DeviceInfo` at all). Before this module existed, the exact same `DeviceInfo`
@@ -17,15 +17,15 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 
-from . import BomberscatConfigEntry
+from . import IncendiscatConfigEntry
 from .const import DOMAIN
 
 
-def device_info(entry: BomberscatConfigEntry) -> DeviceInfo:
-    """Shared `DeviceInfo` for every bomberscat entity (one device per entry)."""
+def device_info(entry: IncendiscatConfigEntry) -> DeviceInfo:
+    """Shared `DeviceInfo` for every incendiscat entity (one device per entry)."""
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
-        name="Bombers de Catalunya",
+        name="Incendis Catalunya",
         manufacturer="Generalitat de Catalunya",
         model="Incendis forestals",
         entry_type=DeviceEntryType.SERVICE,

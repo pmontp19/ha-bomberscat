@@ -183,7 +183,7 @@ Notes:
 
 > **⚠️ Finestra de retenció verificada en servei real (2026-07-02)**: la vista aplica una finestra de retenció d'uns **~4 dies sobre `DATA_ACT`**: una fila la `DATA_ACT` de la qual envelleix més enllà d'aquesta finestra **desapareix completament de la vista**, sense passar per cap estat de tancament previ (el `DATA_ACT` mínim observat a la vista és ~3.85 dies, mentre que hi ha incidents amb data d'inici de fa 8+ dies — les seves files antigues ja no hi són). **Conseqüència pràctica**: un sync incremental (`where=DATA_ACT > <última lectura>`) mai pot observar una baixa — un `act_num` que deixa d'aparèixer simplement es perd de la finestra incremental per sempre, sense cap senyal de "resolt". A més, `ACT_DAT_FI` és `null` al 100% de les files observades (inservible per detectar tancament); el tancament s'expressa únicament amb `COM_FASE = 'Extingit'` (estat terminal). Els literals `TIMESTAMP '...'` i els epochs numèrics del servei són **UTC**, confirmat empíricament.
 >
-> **Decisió (2026-07-02)**: donat que el dataset és petit (desenes de files, sempre una sola pàgina ≤ 2000), cada cicle fa un **fetch complet** (`where=1=1`, `since=None`) i dedup (§2 més amunt), i el coordinador **reconcilia** tractant el resultat com l'estat actual complet: qualsevol `act_num` que estava sent seguit i no apareix en el fetch s'ha esvaït de la vista i es poda (disparant `bomberscat_fire_resolved` si encara no s'havia disparat en passar a `Extingit`). Vegeu `custom_components/bomberscat/coordinator.py` (`_prune_vanished`) per la implementació.
+> **Decisió (2026-07-02)**: donat que el dataset és petit (desenes de files, sempre una sola pàgina ≤ 2000), cada cicle fa un **fetch complet** (`where=1=1`, `since=None`) i dedup (§2 més amunt), i el coordinador **reconcilia** tractant el resultat com l'estat actual complet: qualsevol `act_num` que estava sent seguit i no apareix en el fetch s'ha esvaït de la vista i es poda (disparant `incendiscat_fire_resolved` si encara no s'havia disparat en passar a `Extingit`). Vegeu `custom_components/incendiscat/coordinator.py` (`_prune_vanished`) per la implementació.
 
 Query per obtenir el dataset complet cada cicle:
 
@@ -275,11 +275,11 @@ GET .../Pla_Alfa_Municipal_Avui_FL_2_view/FeatureServer/0/query
 
 Resposta verificada avui: Barcelona, PERIL_M=0 (no estem en campanya activa encara).
 
-### Estratègia d'ús a `ha-bomberscat`
+### Estratègia d'ús a `ha-incendiscat`
 
 1. Lookup del `CODIMUNI` de `zone.home` fent un `ST_Contains` del polígon sobre lat/lon de l'usuari.
 2. Caching diari: el Pla Alfa s'actualitza a 00:00 i 9:30h → no cal polling freqüent.
-3. Exposar `sensor.bomberscat_fire_risk` = `PERIL_M` del municipi + `binary_sensor.bomberscat_high_risk` quan `≥ 3`.
+3. Exposar `sensor.incendiscat_fire_risk` = `PERIL_M` del municipi + `binary_sensor.incendiscat_high_risk` quan `≥ 3`.
 4. Opcional: predir demà amb el servei `_Dema_`.
 
 ---
@@ -325,7 +325,7 @@ Pàgina: <https://interior.gencat.cat/ca/arees_dactuacio/proteccio_civil/plans-p
 
 ### Estat d'explotabilitat
 
-⚠️ L'estat d'activació es publica a notes de premsa / Twitter (`@bomberscat`, `@gencat`). **No s'ha trobat endpoint estructurat públic** que doni "nivell INFOCAT actual". Avaluarem si val la pena incloure-ho o quedar-nos amb el perill raster + fases dels Bombers.
+⚠️ L'estat d'activació es publica a notes de premsa / Twitter (`@incendiscat`, `@gencat`). **No s'ha trobat endpoint estructurat públic** que doni "nivell INFOCAT actual". Avaluarem si val la pena incloure-ho o quedar-nos amb el perill raster + fases dels Bombers.
 
 ---
 
@@ -406,7 +406,7 @@ Són perfectes per a **analytics / històric**:
 - "Superfície cremada acumulada per comarca any rere any."
 - Embed en una card d'estadística del dashboard.
 
-`ha-bomberscat` els consumirà via la API Socrata (SoQL) per a una sensor opcional d'estadística històrica, **no** per a alertes temps real.
+`ha-incendiscat` els consumirà via la API Socrata (SoQL) per a una sensor opcional d'estadística històrica, **no** per a alertes temps real.
 
 ### ❌ No publicats com a dades obertes
 

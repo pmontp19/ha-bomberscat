@@ -1,4 +1,4 @@
-# Pla d'implementació — `ha-bomberscat`
+# Pla d'implementació — `ha-incendiscat`
 
 Descomposició en tasques implementables derivada de [`03-feature-spec.md`](03-feature-spec.md) i [`04-architecture.md`](04-architecture.md). Cada tasca és S/M (1–5 fitxers), deixa el sistema en estat verd i té criteris d'acceptació verificables.
 
@@ -31,10 +31,10 @@ T16 README + release HACS ← (tot)
 
 ### Task 1: Scaffold del repositori i CI
 
-**Descripció:** Crear l'esquelet complet del §1 de `04-architecture.md`: `custom_components/bomberscat/` amb `manifest.json` (§2), `const.py` (domain, defaults, URLs dels endpoints del §9 de `01-data-sources.md`), `hacs.json`, `pyproject.toml` (ruff + pytest config), LICENSE MIT, i els dos workflows (`ci.yml`: ruff+pytest; `validate.yml`: hassfest + HACS validation).
+**Descripció:** Crear l'esquelet complet del §1 de `04-architecture.md`: `custom_components/incendiscat/` amb `manifest.json` (§2), `const.py` (domain, defaults, URLs dels endpoints del §9 de `01-data-sources.md`), `hacs.json`, `pyproject.toml` (ruff + pytest config), LICENSE MIT, i els dos workflows (`ci.yml`: ruff+pytest; `validate.yml`: hassfest + HACS validation).
 
 **Criteris d'acceptació:**
-- [ ] `manifest.json` vàlid amb `domain: bomberscat`, `iot_class: cloud_polling`, `requirements: []`, `config_flow: true`
+- [ ] `manifest.json` vàlid amb `domain: incendiscat`, `iot_class: cloud_polling`, `requirements: []`, `config_flow: true`
 - [ ] Tots els endpoints (Bombers + 6 Pla Alfa + 3 Socrata) com a constants a `const.py`
 - [ ] CI executa en push i falla si ruff/hassfest fallen
 
@@ -86,7 +86,7 @@ T16 README + release HACS ← (tot)
 
 ### Task 5: Coordinator
 
-**Descripció:** `coordinator.py` (`BomberscatDataUpdateCoordinator`, §5 architecture): estat `BomberscatState`, altes/baixes/modificacions per sync incremental, `_passa_filts()` (subtipus/fases/min_vehicles), filtre per radi, cache de distàncies, conservació d'estat si el fetch falla, `_cleanup_resolved()` amb grace period. `__init__.py` amb `async_setup_entry` que arrenca el coordinator, el guarda a `entry.runtime_data` (alias tipat, no `hass.data`) i fa `async_config_entry_first_refresh()`.
+**Descripció:** `coordinator.py` (`IncendiscatDataUpdateCoordinator`, §5 architecture): estat `IncendiscatState`, altes/baixes/modificacions per sync incremental, `_passa_filts()` (subtipus/fases/min_vehicles), filtre per radi, cache de distàncies, conservació d'estat si el fetch falla, `_cleanup_resolved()` amb grace period. `__init__.py` amb `async_setup_entry` que arrenca el coordinator, el guarda a `entry.runtime_data` (alias tipat, no `hass.data`) i fa `async_config_entry_first_refresh()`.
 
 **Criteris d'acceptació:**
 - [ ] Cicle complet: alta nova, modificació, baixa per fase/radi — verificat amb fixtures
@@ -98,10 +98,10 @@ T16 README + release HACS ← (tot)
 
 ### Task 6: Sensors bàsics
 
-**Descripció:** `sensor.py` amb la classe base `BomberscatEntity` (§7 architecture, `DeviceInfo` SERVICE) i 3 sensors: `active_fires`, `nearest_fire_distance`, `nearest_fire_municipi` (§3.2–3.4 feature-spec).
+**Descripció:** `sensor.py` amb la classe base `IncendiscatEntity` (§7 architecture, `DeviceInfo` SERVICE) i 3 sensors: `active_fires`, `nearest_fire_distance`, `nearest_fire_municipi` (§3.2–3.4 feature-spec).
 
 **Criteris d'acceptació:**
-- [ ] Els 3 sensors apareixen sota el dispositiu "Bombers de Catalunya" amb estats correctes segons fixtures
+- [ ] Els 3 sensors apareixen sota el dispositiu "Incendis Catalunya" amb estats correctes segons fixtures
 - [ ] Sense incendis: `active_fires=0`, `distance=-1`, `municipi="—"`
 
 **Verificació:** `pytest tests/test_sensor.py`; comprovació manual a HA dev.
@@ -109,11 +109,11 @@ T16 README + release HACS ← (tot)
 
 ### Task 7: Entities `geo_location`
 
-**Descripció:** `geo_location.py` (§3.1 feature-spec, §7 architecture): una entity per incendi tracked, estat = distància km, tots els attributes especificats (inclòs `source: bomberscat` i `url` al visor), alta/baixa dinàmica seguint el lifecycle del coordinator.
+**Descripció:** `geo_location.py` (§3.1 feature-spec, §7 architecture): una entity per incendi tracked, estat = distància km, tots els attributes especificats (inclòs `source: incendiscat` i `url` al visor), alta/baixa dinàmica seguint el lifecycle del coordinator.
 
 **Criteris d'acceptació:**
 - [ ] Cada incendi de la fixture genera una entity amb tots els attributes del §3.1
-- [ ] La Map card amb `geo_location_sources: [bomberscat]` mostra els markers
+- [ ] La Map card amb `geo_location_sources: [incendiscat]` mostra els markers
 - [ ] Entity eliminada quan el coordinator descarta l'incendi (sense entitats òrfenes al registre)
 
 **Verificació:** `pytest tests/test_geo_location.py`; Map card manual a HA dev.
@@ -132,7 +132,7 @@ T16 README + release HACS ← (tot)
 
 ### Task 9: Events al bus
 
-**Descripció:** `_emit_events()` al coordinator (§6 architecture): `bomberscat_fire_detected`, `bomberscat_fire_resolved`, `bomberscat_phase_change` amb els payloads exactes del §4 de feature-spec. Snapshots `prev_*` per detectar transicions.
+**Descripció:** `_emit_events()` al coordinator (§6 architecture): `incendiscat_fire_detected`, `incendiscat_fire_resolved`, `incendiscat_phase_change` amb els payloads exactes del §4 de feature-spec. Snapshots `prev_*` per detectar transicions.
 
 **Criteris d'acceptació:**
 - [ ] Foc nou dins radi → `fire_detected` (amb `in_alert_radius` correcte); cap event en cicles següents sense canvis
@@ -188,7 +188,7 @@ T16 README + release HACS ← (tot)
 
 ### Task 13: Diagnosi i resiliència completa
 
-**Descripció:** Les 3 entities de diagnosi (§3.11): `service_connected`, `last_update`, `last_update_status`. Implementar la taula de fallades del §9 d'architecture (inclòs event `bomberscat_service_degraded` per 404 persistent) i `diagnostics.py` per al download de diagnòstics de HA.
+**Descripció:** Les 3 entities de diagnosi (§3.11): `service_connected`, `last_update`, `last_update_status`. Implementar la taula de fallades del §9 d'architecture (inclòs event `incendiscat_service_degraded` per 404 persistent) i `diagnostics.py` per al download de diagnòstics de HA.
 
 **Criteris d'acceptació:**
 - [ ] FeatureServer caigut (mock) → `service_connected=off`, estat anterior conservat, recuperació neta quan torna
@@ -217,7 +217,7 @@ T16 README + release HACS ← (tot)
 
 ### Task 15: Blueprint de notificacions
 
-**Descripció:** `blueprints/automation/bomberscat_fire_notification.yaml` amb tots els inputs del §5 de feature-spec (fase mínima, vehicles, distància, critical alert, resolved/phase_changes, tria de mapa) i el format de missatge amb emoji per fase.
+**Descripció:** `blueprints/automation/incendiscat_fire_notification.yaml` amb tots els inputs del §5 de feature-spec (fase mínima, vehicles, distància, critical alert, resolved/phase_changes, tria de mapa) i el format de missatge amb emoji per fase.
 
 **Criteris d'acceptació:**
 - [ ] Blueprint importable i funcional a HA dev; notificació amb botó "Obrir mapa" que obre l'URL triada

@@ -1,17 +1,17 @@
 blueprint:
-  name: "Bombers de Catalunya — Notificació d'incendi"
+  name: "Incendis Catalunya — Notificació d'incendi"
   description: >-
-    Envia una notificació push quan la integració Bombers de Catalunya
-    detecta un incendi (`bomberscat_fire_detected`), i opcionalment quan
-    un incendi es resol (`bomberscat_fire_resolved`) o canvia de fase
-    (`bomberscat_phase_change`). Permet filtrar per fase mínima, nombre de
+    Envia una notificació push quan la integració Incendis Catalunya
+    detecta un incendi (`incendiscat_fire_detected`), i opcionalment quan
+    un incendi es resol (`incendiscat_fire_resolved`) o canvia de fase
+    (`incendiscat_phase_change`). Permet filtrar per fase mínima, nombre de
     vehicles i distància, triar quin mapa obre el botó "Obrir mapa" i marcar
     la notificació com a crítica (salta el "no molestar" a iOS/Android).
 
     Consulta `docs/03-feature-spec.md` §4 i §5 del repositori per als
     payloads exactes dels events i l'especificació d'aquest blueprint.
   domain: automation
-  source_url: https://github.com/pmontp19/ha-bomberscat/blob/main/blueprints/automation/bomberscat_fire_notification.yaml
+  source_url: https://github.com/pmontp19/ha-incendiscat/blob/main/blueprints/automation/incendiscat_fire_notification.yaml
   homeassistant:
     # `!input` dins de `action:`/`data:` i els blocs `if:`/`choose:` amb
     # `variables:` per pas requereixen una versió prou recent de l'schema
@@ -62,7 +62,7 @@ blueprint:
       description: >-
         Distància màxima en km de casa per notificar. Amb 0 (per defecte)
         es fa servir el radi d'alerta configurat a la integració
-        (`in_alert_radius` del payload de `bomberscat_fire_detected`) en
+        (`in_alert_radius` del payload de `incendiscat_fire_detected`) en
         comptes d'un límit fix. Per als events de canvi de fase, un valor
         de 0 vol dir "sense límit de distància" (el payload no inclou
         `in_alert_radius`); per als de resolució no s'aplica cap filtre de
@@ -102,18 +102,18 @@ blueprint:
     open_map_url:
       name: Mapa del botó "Obrir mapa"
       description: >-
-        Servei de mapes que obre el botó de la notificació. `bomberscat` fa
+        Servei de mapes que obre el botó de la notificació. `incendiscat` fa
         servir el visor oficial dels Bombers (únic disponible quan l'event
         no porta coordenades, com als de resolució/canvi de fase);
         `google_maps` i `osm` fan servir la latitud/longitud de l'incendi
-        (només disponible a `bomberscat_fire_detected`).
-      default: bomberscat
+        (només disponible a `incendiscat_fire_detected`).
+      default: incendiscat
       selector:
         select:
           mode: dropdown
           translation_key: open_map_url
           options:
-            - bomberscat
+            - incendiscat
             - google_maps
             - osm
 
@@ -128,13 +128,13 @@ max: 10
 # vehicles + distància) es fa íntegrament dins de `actions` amb `choose`/`if`.
 triggers:
   - trigger: event
-    event_type: bomberscat_fire_detected
+    event_type: incendiscat_fire_detected
     id: detected
   - trigger: event
-    event_type: bomberscat_fire_resolved
+    event_type: incendiscat_fire_resolved
     id: resolved
   - trigger: event
-    event_type: bomberscat_phase_change
+    event_type: incendiscat_phase_change
     id: phase_change
 
 variables:
@@ -163,7 +163,7 @@ variables:
 actions:
   - choose:
       # ---------------------------------------------------------------
-      # bomberscat_fire_detected — sempre avaluat (no té booleà d'inclusió)
+      # incendiscat_fire_detected — sempre avaluat (no té booleà d'inclusió)
       # ---------------------------------------------------------------
       - conditions: "{{ trigger.id == 'detected' }}"
         sequence:
@@ -215,7 +215,7 @@ actions:
                   data: "{{ notify_data }}"
 
       # ---------------------------------------------------------------
-      # bomberscat_fire_resolved — nomes si include_resolved. El payload
+      # incendiscat_fire_resolved — nomes si include_resolved. El payload
       # no porta fase/vehicles/distancia/coordenades, aixi que nomes es
       # filtra pel booleà (docs/04-architecture.md §4.2).
       # ---------------------------------------------------------------
@@ -250,7 +250,7 @@ actions:
               data: "{{ notify_data }}"
 
       # ---------------------------------------------------------------
-      # bomberscat_phase_change — nomes si include_phase_changes. El
+      # incendiscat_phase_change — nomes si include_phase_changes. El
       # payload porta distance_km pero no vehicles ni coordenades ni
       # `in_alert_radius`, aixi que `maximum_distance = 0` es tracta com
       # "sense límit" (no hi ha in_alert_radius amb què comparar) en

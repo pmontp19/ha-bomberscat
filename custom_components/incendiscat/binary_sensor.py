@@ -1,17 +1,17 @@
-"""Binary sensor platform for bomberscat (`fire_nearby`, `high_risk`,
+"""Binary sensor platform for incendiscat (`fire_nearby`, `high_risk`,
 `service_connected`).
 
-Implements `binary_sensor.bomberscat_fire_nearby` (docs/03-feature-spec.md
+Implements `binary_sensor.incendiscat_fire_nearby` (docs/03-feature-spec.md
 §3.9): `on` when any incident that passes the tracking filters is within the
 **alert** radius (`coordinator.config.alert_radius_km`) — deliberately not
 the (larger) track radius, which only gates `geo_location` entities and the
 aggregate counters.
 
-Also implements `binary_sensor.bomberscat_high_risk` (§3.10, Pla Alfa,
-`HighRiskBinarySensor` below): `on` when `sensor.bomberscat_fire_risk`'s
+Also implements `binary_sensor.incendiscat_high_risk` (§3.10, Pla Alfa,
+`HighRiskBinarySensor` below): `on` when `sensor.incendiscat_fire_risk`'s
 underlying `PERIL_M` is at or above the configured threshold. It is backed
 by the independent `PlaAlfaCoordinator` (see `pla_alfa.py`/`__init__.py`),
-not the Bombers coordinator that `BomberscatFireNearbyBinarySensor` below
+not the Bombers coordinator that `IncendiscatFireNearbyBinarySensor` below
 uses — the two entities' availability is fully decoupled.
 
 Device class (`SAFETY` vs `PROBLEM`): both HA binary sensor device classes
@@ -56,9 +56,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import BomberscatConfigEntry
+from . import IncendiscatConfigEntry
 from .const import CONF_HIGH_RISK_THRESHOLD, DEFAULT_HIGH_RISK_THRESHOLD
-from .coordinator import BomberscatDataUpdateCoordinator, BomberscatState
+from .coordinator import IncendiscatDataUpdateCoordinator, IncendiscatState
 from .entity import device_info
 from .models import Incident
 from .pla_alfa import PlaAlfaCoordinator
@@ -66,21 +66,21 @@ from .pla_alfa import PlaAlfaCoordinator
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: BomberscatConfigEntry,
+    entry: IncendiscatConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up bomberscat binary sensors from a config entry."""
+    """Set up incendiscat binary sensors from a config entry."""
     async_add_entities(
         [
-            BomberscatFireNearbyBinarySensor(entry),
+            IncendiscatFireNearbyBinarySensor(entry),
             HighRiskBinarySensor(entry),
             ServiceConnectedBinarySensor(entry),
         ]
     )
 
 
-class BomberscatFireNearbyBinarySensor(
-    CoordinatorEntity[BomberscatState], BinarySensorEntity
+class IncendiscatFireNearbyBinarySensor(
+    CoordinatorEntity[IncendiscatState], BinarySensorEntity
 ):
     """`on` iff an actively-tracked incident is within the alert radius."""
 
@@ -88,8 +88,8 @@ class BomberscatFireNearbyBinarySensor(
     _attr_translation_key = "fire_nearby"
     _attr_device_class = BinarySensorDeviceClass.SAFETY
 
-    def __init__(self, entry: BomberscatConfigEntry) -> None:
-        coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
+    def __init__(self, entry: IncendiscatConfigEntry) -> None:
+        coordinator: IncendiscatDataUpdateCoordinator = entry.runtime_data
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_fire_nearby"
         self._attr_device_info = device_info(entry)
@@ -135,12 +135,12 @@ class BomberscatFireNearbyBinarySensor(
 
 
 class HighRiskBinarySensor(CoordinatorEntity[PlaAlfaCoordinator], BinarySensorEntity):
-    """`binary_sensor.bomberscat_high_risk` (feature-spec §3.10).
+    """`binary_sensor.incendiscat_high_risk` (feature-spec §3.10).
 
     `on` iff Pla Alfa's `PERIL_M` for `zone.home`'s municipality is at or
     above `options[CONF_HIGH_RISK_THRESHOLD]` (default 3 = "Alt", per
     `DEFAULT_HIGH_RISK_THRESHOLD`). The threshold is read once at entity
-    construction time — consistent with `BomberscatRuntimeConfig.from_entry`
+    construction time — consistent with `IncendiscatRuntimeConfig.from_entry`
     in coordinator.py, which does the same for the Bombers-side options —
     since an options change reloads the whole config entry (see
     `_async_update_listener` in `__init__.py`), rebuilding every entity
@@ -156,8 +156,8 @@ class HighRiskBinarySensor(CoordinatorEntity[PlaAlfaCoordinator], BinarySensorEn
     _attr_translation_key = "high_risk"
     _attr_device_class = BinarySensorDeviceClass.SAFETY
 
-    def __init__(self, entry: BomberscatConfigEntry) -> None:
-        bombers_coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
+    def __init__(self, entry: IncendiscatConfigEntry) -> None:
+        bombers_coordinator: IncendiscatDataUpdateCoordinator = entry.runtime_data
         coordinator: PlaAlfaCoordinator = bombers_coordinator.pla_alfa
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_high_risk"
@@ -186,9 +186,9 @@ class HighRiskBinarySensor(CoordinatorEntity[PlaAlfaCoordinator], BinarySensorEn
 
 
 class ServiceConnectedBinarySensor(
-    CoordinatorEntity[BomberscatDataUpdateCoordinator], BinarySensorEntity
+    CoordinatorEntity[IncendiscatDataUpdateCoordinator], BinarySensorEntity
 ):
-    """`binary_sensor.bomberscat_service_connected` (feature-spec §3.11):
+    """`binary_sensor.incendiscat_service_connected` (feature-spec §3.11):
     `on` iff the last poll of the Bombers FeatureServer succeeded.
 
     Availability is deliberately overridden to always be `True`: this is a
@@ -203,8 +203,8 @@ class ServiceConnectedBinarySensor(
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, entry: BomberscatConfigEntry) -> None:
-        coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
+    def __init__(self, entry: IncendiscatConfigEntry) -> None:
+        coordinator: IncendiscatDataUpdateCoordinator = entry.runtime_data
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_service_connected"
         self._attr_device_info = device_info(entry)

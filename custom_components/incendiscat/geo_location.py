@@ -1,6 +1,6 @@
-"""Geolocation platform for bomberscat: one entity per tracked wildfire.
+"""Geolocation platform for incendiscat: one entity per tracked wildfire.
 
-Implements `geo_location.bomberscat_<act_num>` (docs/03-feature-spec.md
+Implements `geo_location.incendiscat_<act_num>` (docs/03-feature-spec.md
 §3.1): state = distance in km from `zone.home` to the incident, with the
 full attribute set from the §3.1 table. Unlike the aggregate `sensor`/
 `binary_sensor` platforms (one static entity created once at setup),
@@ -21,7 +21,7 @@ the manager only has to care about entities appearing/disappearing.
 
 Registry-orphan strategy (acceptance criterion: "sense entitats òrfenes al
 registre"): we set `unique_id` (as
-directed by docs/04-architecture.md §7's `BomberscatFireLocation` sketch),
+directed by docs/04-architecture.md §7's `IncendiscatFireLocation` sketch),
 which means `async_add_entities` registers each entity in the entity
 registry. Merely calling `Entity.async_remove(force_remove=True)` does
 **not** delete that registry entry (Home Assistant's default behavior when
@@ -51,31 +51,31 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import BomberscatConfigEntry
+from . import IncendiscatConfigEntry
 from .const import BOMBERS_VIEWER_URL
-from .coordinator import BomberscatDataUpdateCoordinator, BomberscatState
+from .coordinator import IncendiscatDataUpdateCoordinator, IncendiscatState
 from .models import Incident
 
 _LOGGER = logging.getLogger(__name__)
 
-SOURCE = "bomberscat"
+SOURCE = "incendiscat"
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: BomberscatConfigEntry,
+    entry: IncendiscatConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up bomberscat geo_location entities from a config entry.
+    """Set up incendiscat geo_location entities from a config entry.
 
-    Creates one `BomberscatFireLocation` per act_num already in
+    Creates one `IncendiscatFireLocation` per act_num already in
     `coordinator.data.incidents` (populated by
     `async_config_entry_first_refresh()` before platforms are forwarded, see
     `__init__.py`), then keeps that set in sync with every later coordinator
     refresh for the lifetime of the entry (see module docstring).
     """
-    coordinator: BomberscatDataUpdateCoordinator = entry.runtime_data
-    known: dict[str, BomberscatFireLocation] = {}
+    coordinator: IncendiscatDataUpdateCoordinator = entry.runtime_data
+    known: dict[str, IncendiscatFireLocation] = {}
     # Pending teardown tasks per act_num: an act_num popped from `known` is
     # only fully gone once its removal task finishes. Re-adding the same
     # act_num before that would call `async_add_entities` with the same
@@ -86,7 +86,7 @@ async def async_setup_entry(
     def _add_entity(act_num: str) -> None:
         if act_num not in coordinator.data.incidents or act_num in known:
             return
-        entity = BomberscatFireLocation(coordinator, act_num)
+        entity = IncendiscatFireLocation(coordinator, act_num)
         known[act_num] = entity
         async_add_entities([entity])
 
@@ -106,7 +106,7 @@ async def async_setup_entry(
             task = entry.async_create_background_task(
                 hass,
                 entity.async_remove(force_remove=True),
-                name=f"bomberscat_remove_{act_num}",
+                name=f"incendiscat_remove_{act_num}",
             )
             pending_removals[act_num] = task
             task.add_done_callback(
@@ -119,7 +119,7 @@ async def async_setup_entry(
                 entry.async_create_background_task(
                     hass,
                     _add_after(removal, act_num),
-                    name=f"bomberscat_readd_{act_num}",
+                    name=f"incendiscat_readd_{act_num}",
                 )
             else:
                 _add_entity(act_num)
@@ -128,10 +128,10 @@ async def async_setup_entry(
     _sync_entities()
 
 
-class BomberscatFireLocation(CoordinatorEntity[BomberscatState], GeolocationEvent):
+class IncendiscatFireLocation(CoordinatorEntity[IncendiscatState], GeolocationEvent):
     """A single tracked wildfire, rendered as a `geo_location` entity.
 
-    Not attached to the "Bombers de Catalunya" `DeviceInfo` (unlike the
+    Not attached to the "Incendis Catalunya" `DeviceInfo` (unlike the
     `sensor`/`binary_sensor` entities): each instance represents an external
     event (a specific fire), not a sub-component of the integration's
     service device, mirroring docs/04-architecture.md §7's sketch and how
@@ -145,14 +145,14 @@ class BomberscatFireLocation(CoordinatorEntity[BomberscatState], GeolocationEven
     _attr_unit_of_measurement = UnitOfLength.KILOMETERS
 
     def __init__(
-        self, coordinator: BomberscatDataUpdateCoordinator, act_num: str
+        self, coordinator: IncendiscatDataUpdateCoordinator, act_num: str
     ) -> None:
         super().__init__(coordinator)
         self.act_num = act_num
         # Domain-prefixed (not entry_id-prefixed like other platforms): safe
         # only while manifest.json enforces single_config_entry — revisit if
         # multi-instance support is ever added.
-        self._attr_unique_id = f"bomberscat_{act_num}"
+        self._attr_unique_id = f"incendiscat_{act_num}"
         incident = coordinator.data.incidents[act_num]
         self._update_from_incident(incident)
 

@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
-from custom_components.bomberscat.const import CONF_ACTIVE_PHASES, DOMAIN
-from custom_components.bomberscat.models import Fase, Tipus
+from custom_components.incendiscat.const import CONF_ACTIVE_PHASES, DOMAIN
+from custom_components.incendiscat.models import Fase, Tipus
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -33,7 +33,7 @@ SENSOR_KEYS = [
 
 def _patched_fetch(*side_effects):
     return patch(
-        "custom_components.bomberscat.coordinator.fetch_incidents",
+        "custom_components.incendiscat.coordinator.fetch_incidents",
         AsyncMock(side_effect=list(side_effects)),
     )
 

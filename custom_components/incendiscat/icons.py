@@ -1,4 +1,4 @@
-"""mdi icon mappings for bomberscat entities (docs/04-architecture.md §7).
+"""mdi icon mappings for incendiscat entities (docs/04-architecture.md §7).
 
 Kept as plain dicts (no HA imports) so they stay trivially testable and
 reusable from any platform module (`sensor.py` today; `geo_location.py` /

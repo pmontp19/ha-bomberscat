@@ -6,12 +6,12 @@ Regles operatives per treballar en aquest repositori. Descripció del projecte, 
 
 - Conventional Commits estricte (`feat:`, `fix:`, `fix!:`, `docs:`, `chore:`, `refactor:`, `test:`, `ci:`) — `release-please` en depèn per calcular versió i changelog; un subjecte mal format queda fora del release. Detall a `CONTRIBUTING.md`.
 - No referenciïs números de tasca del pla (`T14`, `Task 5`) ni a commits ni a comentaris de codi — expliquen el *perquè*, no l'origen; el pla evoluciona i la referència queda òrfena.
-- Mai editis a mà `version` a `pyproject.toml` o `custom_components/bomberscat/manifest.json` — només `release-please` els toca.
+- Mai editis a mà `version` a `pyproject.toml` o `custom_components/incendiscat/manifest.json` — només `release-please` els toca.
 
 ## Codi
 
 - Comentaris/identificadors en anglès. Strings de cara a l'usuari (config flow, noms d'entity) via `_attr_translation_key` + `translations/{ca,es,en}.json` — català és la llengua de referència. Qualsevol entity o camp de config flow nou necessita clau a **els tres** fitxers o `hassfest` falla.
-- Estat de la integració a `entry.runtime_data` (alias tipat `BomberscatConfigEntry`), mai a `hass.data[DOMAIN]`.
+- Estat de la integració a `entry.runtime_data` (alias tipat `IncendiscatConfigEntry`), mai a `hass.data[DOMAIN]`.
 - `DeviceInfo.entry_type=SERVICE` — és un servei cloud, no un dispositiu físic.
 - Dades del FeatureServer ArcGIS (Bombers/Pla Alfa) no són d'una API oficial i poden canviar sense avís: accedeix a camps amb `.get()` + valor per defecte, mai indexació directa; qualsevol canvi ha de mantenir aquesta tolerància (docs/04-architecture.md §9).
 - Camps de text externs (`municipi`, `tipus_desc`, etc.) són no fiables: mai `allow_html` ni interpolació HTML directa. Diagnostics ha de seguir redactant `latitude`/`longitude` abans d'exportar.
@@ -26,4 +26,4 @@ Regles operatives per treballar en aquest repositori. Descripció del projecte, 
 
 ## Abans d'obrir/actualitzar una PR
 
-`ruff check .`, `ruff format --check .` i `pytest --cov=custom_components/bomberscat --cov-fail-under=95` en verd — són exactament les gates de `ci.yml`/`validate.yml`.
+`ruff check .`, `ruff format --check .` i `pytest --cov=custom_components/incendiscat --cov-fail-under=95` en verd — són exactament les gates de `ci.yml`/`validate.yml`.
