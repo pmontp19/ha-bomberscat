@@ -182,6 +182,21 @@ async def test_fetch_risk_dema_and_comarcal_best_effort_when_empty() -> None:
     assert risk.hora_vigencia is None
 
 
+async def test_fetch_risk_dema_out_of_range_treated_as_unpublished() -> None:
+    """Before ~14:30h the demà layer returns a `5` sentinel (out of the
+    documented 0-4 scale) for every municipality and the official viewer
+    leaves it unpainted. `perill_dema` must be None, not a bogus 5."""
+    with aioresponses() as mocked:
+        mocked.get(MUNI_URL_PATTERN, payload=_muni_payload(peril_m=2))
+        mocked.get(DEMA_URL_PATTERN, payload=_dema_payload(peril_m=5))
+        mocked.get(COM_URL_PATTERN, payload=_empty_payload())
+        async with aiohttp.ClientSession() as session:
+            risk = await fetch_risk(session, LAT, LON, sleep=_noop_sleep)
+
+    assert risk.peril_m == 2
+    assert risk.perill_dema is None
+
+
 async def test_fetch_risk_no_municipality_raises() -> None:
     """The point does not intersect any municipality polygon (e.g. outside
     Catalonia) -> ArcgisClientError, since there is nothing to report."""

@@ -275,7 +275,15 @@ async def fetch_risk(
             session, PLA_ALFA_MUNI_DEMA_URL, lat, lon, "PERIL_M", sleep=sleep
         )
         if dema is not None:
-            perill_dema = _parse_int(dema.get("PERIL_M"))
+            parsed_dema = _parse_int(dema.get("PERIL_M"))
+            # Tomorrow's forecast is only published around 14:30h; before that
+            # the layer returns a `5` sentinel (out of the documented 0-4
+            # scale) for every municipality, and the official viewer leaves
+            # those unpainted with "s'actualitzarà a les 14:30h". Treat any
+            # out-of-range value as "not published yet" rather than surfacing a
+            # bogus level-5 attribute.
+            if parsed_dema is not None and parsed_dema in NIVELL_TEXTS:
+                perill_dema = parsed_dema
     except ArcgisClientError as err:
         _LOGGER.warning("Pla Alfa: could not fetch tomorrow's risk level: %s", err)
 
