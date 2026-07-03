@@ -31,7 +31,7 @@ El flux de configuració té dos passos:
 
 1. **Ubicació i radis** — mapa amb marcador arrossegable, preomplert amb `zone.home`. Dos radis:
    - **Radi de seguiment** (el cercle del mapa, 5–200 km, per defecte 100 km): quins incendis es fan seguir — generen `geo_location` i compten als sensors agregats.
-   - **Radi d'alerta** (per defecte 30 km, no pot ser més gran que el de seguiment): quins incendis activen `binary_sensor.incendis_catalunya_fire_nearby` i els events de proximitat.
+   - **Radi d'alerta** (per defecte 30 km, no pot ser més gran que el de seguiment): quins incendis activen `binary_sensor.incendis_catalunya_incendi_a_prop` i els events de proximitat.
 
    Distingir-los permet veure tots els incendis de Catalunya al mapa però rebre alertes només dels que són realment a prop.
 
@@ -45,26 +45,28 @@ Per moure la ubicació vigilada (no els filtres) feu servir **Reconfigurar** a l
 
 Totes les entitats agregades pengen d'un únic dispositiu **"Incendis Catalunya"**. A més, hi ha una entitat `geo_location` per cada incendi actiu dins del radi de seguiment.
 
+Els `entity_id` d'aquesta taula corresponen a una instància de Home Assistant configurada **en català**: Home Assistant genera l'`entity_id` inicial a partir del nom traduït de l'entitat, no de la clau de traducció interna, així que en una instància en castellà o anglès seran diferents (p.ex. `sensor.incendis_catalunya_fire_risk_pla_alfa` en anglès enlloc de `sensor.incendis_catalunya_risc_d_incendi_pla_alfa`). Si les automacions d'exemple no troben l'entitat, comprova l'`entity_id` real a **Eines de desenvolupament → Estats**.
+
 | Entitat | Descripció |
 | --- | --- |
-| `sensor.incendis_catalunya_active_fires` | Nombre d'incendis actius (fases configurades) dins el radi de seguiment. Atributs: `last_updated`, `total_in_track_radius`, `total_in_alert_radius`. |
-| `sensor.incendis_catalunya_nearest_fire_distance` | Distància en km a l'incendi actiu més proper. `-1` si no n'hi ha cap. |
-| `sensor.incendis_catalunya_nearest_fire_municipality` | Municipi de l'incendi actiu més proper. `"—"` si no n'hi ha cap. |
-| `sensor.incendis_catalunya_fires_per_phase` | Total d'incendis en seguiment; atributs `actiu`, `estabilitzat`, `controlat`, `extingit`. |
-| `sensor.incendis_catalunya_fires_per_type` | Total d'incendis en seguiment; atributs `vf`, `va`, `vu`. |
-| `sensor.incendis_catalunya_deployed_vehicles` | Suma de vehicles desplegats als incendis en seguiment. |
-| `sensor.incendis_catalunya_fire_risk_pla_alfa` | Nivell de risc Pla Alfa (0–4) del municipi de la ubicació configurada. Atributs: `nivell_text`, `comarca`, `municipi`, `data_vigencia`, `hora_vigencia`, `perill_dema`. |
-| `binary_sensor.incendis_catalunya_fire_nearby` | `on` si hi ha un incendi actiu dins el radi d'alerta. Atributs (quan `on`): `nearest_act_num`, `nearest_distance_km`, `nearest_municipi`, `nearest_fase`. |
-| `binary_sensor.incendis_catalunya_high_fire_risk` | `on` si `fire_risk` ≥ llindar configurat. |
+| `sensor.incendis_catalunya_incendis_actius` | Nombre d'incendis actius (fases configurades) dins el radi de seguiment. Atributs: `last_updated`, `total_in_track_radius`, `total_in_alert_radius`. |
+| `sensor.incendis_catalunya_distancia_a_l_incendi_mes_proper` | Distància en km a l'incendi actiu més proper. `unknown` si no n'hi ha cap. |
+| `sensor.incendis_catalunya_municipi_de_l_incendi_mes_proper` | Municipi de l'incendi actiu més proper. `"—"` si no n'hi ha cap. |
+| `sensor.incendis_catalunya_incendis_per_fase` | Total d'incendis en seguiment; atributs `actiu`, `estabilitzat`, `controlat`, `extingit`. |
+| `sensor.incendis_catalunya_incendis_per_tipus` | Total d'incendis en seguiment; atributs `vf`, `va`, `vu`. |
+| `sensor.incendis_catalunya_vehicles_desplegats` | Suma de vehicles desplegats als incendis en seguiment. |
+| `sensor.incendis_catalunya_risc_d_incendi_pla_alfa` | Nivell de risc Pla Alfa (0–4) del municipi de la ubicació configurada. Atributs: `nivell_text`, `comarca`, `municipi`, `data_vigencia`, `hora_vigencia`, `perill_dema`. |
+| `binary_sensor.incendis_catalunya_incendi_a_prop` | `on` si hi ha un incendi actiu dins el radi d'alerta. Atributs (quan `on`): `nearest_act_num`, `nearest_distance_km`, `nearest_municipi`, `nearest_fase`. |
+| `binary_sensor.incendis_catalunya_risc_alt_d_incendi` | `on` si `fire_risk` ≥ llindar configurat. |
 | `geo_location.foc_<municipi>` | Un per incendi en seguiment; estat = distància en km. Atributs: `source` (`"incendiscat"`), `latitude`, `longitude`, `act_num`, `fase`, `tipus`, `tipus_desc`, `municipi`, `data_inici`, `data_fi`, `vehicles`, `situacio`, `updated_at`, `url`. |
 
 Entitats de diagnòstic (necessàries perquè la font no és una API oficial i pot fallar):
 
 | Entitat | Descripció |
 | --- | --- |
-| `binary_sensor.incendis_catalunya_service_connected` | `on` si l'última consulta al FeatureServer dels Bombers ha anat bé. |
-| `sensor.incendis_catalunya_last_update` | Marca de temps de l'última sincronització correcta. |
-| `sensor.incendis_catalunya_last_update_status` | `success` o `error_<codi>` (p.ex. `error_timeout`, `error_http_404`). |
+| `binary_sensor.incendis_catalunya_servei_connectat` | `on` si l'última consulta al FeatureServer dels Bombers ha anat bé. |
+| `sensor.incendis_catalunya_darrera_actualitzacio` | Marca de temps de l'última sincronització correcta. |
+| `sensor.incendis_catalunya_estat_de_la_darrera_actualitzacio` | `success` o `error_<codi>` (p.ex. `error_timeout`, `error_http_404`). |
 
 ## Events
 
@@ -152,11 +154,11 @@ cards:
       - incendiscat
   - type: glance
     entities:
-      - sensor.incendis_catalunya_active_fires
-      - sensor.incendis_catalunya_nearest_fire_distance
-      - sensor.incendis_catalunya_nearest_fire_municipality
-      - sensor.incendis_catalunya_deployed_vehicles
-      - binary_sensor.incendis_catalunya_fire_nearby
+      - sensor.incendis_catalunya_incendis_actius
+      - sensor.incendis_catalunya_distancia_a_l_incendi_mes_proper
+      - sensor.incendis_catalunya_municipi_de_l_incendi_mes_proper
+      - sensor.incendis_catalunya_vehicles_desplegats
+      - binary_sensor.incendis_catalunya_incendi_a_prop
   - type: markdown
     title: Incendis actius
     content: |
@@ -173,8 +175,8 @@ cards:
 ## Patrons d'automació
 
 1. **Notificació push quan apareix un foc nou dins X km** — feu servir el blueprint (secció anterior).
-2. **Encendre aspersors o tancar persianes** quan `binary_sensor.incendis_catalunya_fire_nearby` passa a `on`.
-3. **Avís al matí si avui hi ha risc alt** — `binary_sensor.incendis_catalunya_high_fire_risk` passa a `on`.
+2. **Encendre aspersors o tancar persianes** quan `binary_sensor.incendis_catalunya_incendi_a_prop` passa a `on`.
+3. **Avís al matí si avui hi ha risc alt** — `binary_sensor.incendis_catalunya_risc_alt_d_incendi` passa a `on`.
 4. **Registre per a postmortem** — `incendiscat_phase_change` cap a una notificació silenciosa o un `logbook.log`.
 5. **Tancament automàtic de finestres** si `fire_nearby` és `on` i la qualitat de l'aire (sensor PM2.5) és dolenta.
 
@@ -184,7 +186,7 @@ Exemple: avís matinal de risc alt (patró 3):
 alias: Avisa si avui hi ha risc alt d'incendi
 trigger:
   - platform: state
-    entity_id: binary_sensor.incendis_catalunya_high_fire_risk
+    entity_id: binary_sensor.incendis_catalunya_risc_alt_d_incendi
     to: "on"
 condition:
   - condition: time
@@ -195,8 +197,8 @@ action:
     data:
       title: "🔥 Risc alt d'incendi avui"
       message: >
-        Nivell {{ state_attr('sensor.incendis_catalunya_fire_risk_pla_alfa', 'nivell_text') }}
-        a {{ state_attr('sensor.incendis_catalunya_fire_risk_pla_alfa', 'municipi') }}. Evita fer foc.
+        Nivell {{ state_attr('sensor.incendis_catalunya_risc_d_incendi_pla_alfa', 'nivell_text') | default('desconegut') }}
+        a {{ state_attr('sensor.incendis_catalunya_risc_d_incendi_pla_alfa', 'municipi') | default('la teva zona') }}. Evita fer foc.
 ```
 
 Exemple: tancar persianes quan hi ha un incendi a prop (patró 2):
@@ -205,7 +207,7 @@ Exemple: tancar persianes quan hi ha un incendi a prop (patró 2):
 alias: Tanca persianes si hi ha un incendi a prop
 trigger:
   - platform: state
-    entity_id: binary_sensor.incendis_catalunya_fire_nearby
+    entity_id: binary_sensor.incendis_catalunya_incendi_a_prop
     to: "on"
 action:
   - service: cover.close_cover
@@ -224,7 +226,7 @@ Detalls tècnics complets (schemas, glossaris, endpoints) a [`docs/01-data-sourc
 
 **Cap d'aquestes fonts és una API oficialment suportada** — són FeatureServers públics d'ArcGIS que poden canviar d'adreça o d'esquema sense avís. Quan això passa:
 
-- `binary_sensor.incendis_catalunya_service_connected` passa a `off`.
+- `binary_sensor.incendis_catalunya_servei_connectat` passa a `off`.
 - Després de 3 errors seguits del mateix tipus, es dispara l'event `incendiscat_service_degraded` i s'obre una incidència de reparació (repair issue) a Home Assistant amb enllaç a [GitHub Issues](https://github.com/pmontp19/ha-incendiscat/issues).
 - Les dades ja carregades es mantenen (no s'esborren) fins que el servei torna.
 
