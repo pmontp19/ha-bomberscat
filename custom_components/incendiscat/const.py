@@ -116,7 +116,9 @@ DEFAULT_ACTIVE_PHASES = ["actiu", "estabilitzat"]
 DEFAULT_MIN_VEHICLES = 0
 
 # Pla Alfa risk level (PERIL_M, 0-4) threshold for binary_sensor.high_risk.
-DEFAULT_HIGH_RISK_THRESHOLD = 3
+# 2 = "Alt" per Interior's official Pla Alfa legend (docs/01-data-sources.md
+# §3), not the "vermell"/3 guess this used to be.
+DEFAULT_HIGH_RISK_THRESHOLD = 2
 MIN_HIGH_RISK_THRESHOLD = 0
 MAX_HIGH_RISK_THRESHOLD = 4
 

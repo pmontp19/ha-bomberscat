@@ -26,7 +26,7 @@ from homeassistant.helpers import entity_registry as er
 from .conftest import make_config_entry, make_incident
 
 RISK_ALT = PlaAlfaRisk(
-    peril_m=3,
+    peril_m=2,
     nivell_text="Alt",
     municipi="Testville",
     comarca="Testcomarca",
@@ -35,7 +35,7 @@ RISK_ALT = PlaAlfaRisk(
     hora_vigencia="9:30",
 )
 RISK_BAIX = PlaAlfaRisk(
-    peril_m=1,
+    peril_m=0,
     nivell_text="Baix",
     municipi="Testville",
     comarca="Testcomarca",
@@ -91,7 +91,7 @@ async def test_fire_risk_state_and_attributes(hass: HomeAssistant) -> None:
 
     state = _state(hass, entry, "sensor", "fire_risk")
     assert state is not None
-    assert state.state == "3"
+    assert state.state == "2"
     assert state.attributes["nivell_text"] == "Alt"
     assert state.attributes["comarca"] == "Testcomarca"
     assert state.attributes["municipi"] == "Testville"
@@ -105,7 +105,7 @@ async def test_fire_risk_reflects_low_level(hass: HomeAssistant) -> None:
         entry = await _setup(hass)
 
     state = _state(hass, entry, "sensor", "fire_risk")
-    assert state.state == "1"
+    assert state.state == "0"
     assert state.attributes["nivell_text"] == "Baix"
 
 
@@ -129,11 +129,11 @@ async def test_high_risk_on_at_default_threshold(hass: HomeAssistant) -> None:
 
     state = _state(hass, entry, "binary_sensor", "high_risk")
     assert state.state == "on"
-    assert state.attributes["threshold"] == 3
+    assert state.attributes["threshold"] == 2
 
 
 async def test_high_risk_respects_custom_threshold_option(hass: HomeAssistant) -> None:
-    # peril_m=3 ("Alt") is below a custom threshold of 4 ("Extrem").
+    # peril_m=2 ("Alt") is below a custom threshold of 4 ("Extrem").
     entry = make_config_entry(options={CONF_HIGH_RISK_THRESHOLD: 4})
     with _patched_incidents([]), _patched_risk(RISK_ALT):
         entry = await _setup(hass, entry=entry)

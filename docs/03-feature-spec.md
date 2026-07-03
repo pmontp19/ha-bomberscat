@@ -55,7 +55,7 @@ Distingir els dos radis és clau: pots voler veure tots els focs de Catalunya (s
 
 Tots els anteriors. A més:
 
-- **Llindar de risc alt** (0–4) pel Pla Alfa — default 3 (Alt).
+- **Llindar de risc alt** (0–4) pel Pla Alfa — default 2 (Alt).
 - **Notificació crítica** (by-passa DND) — checkbox.
 
 > **Idioma**: no hi ha opció manual de llengua. Els noms d'entities es tradueixen amb el mecanisme natiu de HA (`has_entity_name` + `translation_key` + `translations/{ca,es,en}.json`), segons l'idioma del sistema. Una opció pròpia seria un anti-patró ([entity-translations](https://developers.home-assistant.io/docs/core/integration-quality-scale/rules/entity-translations/)).
@@ -140,12 +140,12 @@ Sumatori de `ACT_NUM_VEH` dels incendis en seguiment. State: enter ≥ 0. Attrib
 State: nivell de perill Pla Alfa del municipi de `zone.home`, escala **0–4** (extreta de `PERIL_M` del FeatureServer `Pla_Alfa_Municipal_Avui_FL_2_view`).
 
 Attributes:
-- `nivell_text`: "Sense risc" / "Baix" / "Moderat" / "Alt" / "Extrem"
+- `nivell_text`: "Baix" / "Moderat" / "Alt" / "Molt alt" / "Extrem" (text oficial del panell "Nivells del Pla Alfa" d'Interior — no hi ha nivell "sense risc")
 - `comarca`, `municipi`
 - `data_vigencia`, `hora_vigencia` (de `Pla_Alfa_Comarcal_Avui_FL_VW`)
 - `perill_demà` (del servei `_Dema_` equivalent)
 
-Classificació (del renderer Pla Alfa): `0`=blanc/none, `1`=groc/baix, `2`=taronja/moderat, `3`=vermell/alt, `4`=vermell fosc/extrem.
+Classificació: `0`=blanc/baix, `1`=groc/moderat, `2`=taronja/alt, `3`=vermell/molt alt, `4`=vermell fosc/extrem.
 
 Polling: 2 cops al dia (00:30 i 09:45h, just després de les actualitzacions oficials) — no cal freqüent.
 
@@ -156,7 +156,7 @@ Attributes (quan `on`): `nearest_act_num`, `nearest_distance_km`, `nearest_munic
 
 ### 3.10 `binary_sensor.incendiscat_high_risk` ✅
 
-`on` si `sensor.incendiscat_fire_risk` ≥ llindar configurat (default 3 = Alt, equivalent a Pla Alfa vermell). Dispara automacions matinals ("avui risc alt, no encenguis foc").
+`on` si `sensor.incendiscat_fire_risk` ≥ llindar configurat (default 2 = Alt, equivalent a Pla Alfa taronja). Dispara automacions matinals ("avui risc alt, no encenguis foc").
 
 ### 3.11 Diagnosi
 

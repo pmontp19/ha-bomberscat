@@ -138,7 +138,7 @@ class HighRiskBinarySensor(CoordinatorEntity[PlaAlfaCoordinator], BinarySensorEn
     """`binary_sensor.incendiscat_high_risk` (feature-spec §3.10).
 
     `on` iff Pla Alfa's `PERIL_M` for `zone.home`'s municipality is at or
-    above `options[CONF_HIGH_RISK_THRESHOLD]` (default 3 = "Alt", per
+    above `options[CONF_HIGH_RISK_THRESHOLD]` (default 2 = "Alt", per
     `DEFAULT_HIGH_RISK_THRESHOLD`). The threshold is read once at entity
     construction time — consistent with `IncendiscatRuntimeConfig.from_entry`
     in coordinator.py, which does the same for the Bombers-side options —

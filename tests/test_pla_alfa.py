@@ -86,10 +86,10 @@ def test_pla_alfa_reuses_arcgis_client_error_type() -> None:
 @pytest.mark.parametrize(
     ("level", "text"),
     [
-        (0, "Sense risc"),
-        (1, "Baix"),
-        (2, "Moderat"),
-        (3, "Alt"),
+        (0, "Baix"),
+        (1, "Moderat"),
+        (2, "Alt"),
+        (3, "Molt alt"),
         (4, "Extrem"),
     ],
 )
@@ -155,7 +155,7 @@ async def test_fetch_risk_assembles_full_result() -> None:
 
     assert risk == PlaAlfaRisk(
         peril_m=3,
-        nivell_text="Alt",
+        nivell_text="Molt alt",
         municipi="Barcelona",
         comarca="Barcelonès",
         perill_dema=4,
@@ -176,7 +176,7 @@ async def test_fetch_risk_dema_and_comarcal_best_effort_when_empty() -> None:
             risk = await fetch_risk(session, LAT, LON, sleep=_noop_sleep)
 
     assert risk.peril_m == 0
-    assert risk.nivell_text == "Sense risc"
+    assert risk.nivell_text == "Baix"
     assert risk.perill_dema is None
     assert risk.data_vigencia is None
     assert risk.hora_vigencia is None

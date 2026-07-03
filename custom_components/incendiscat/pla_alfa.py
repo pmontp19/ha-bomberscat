@@ -75,11 +75,14 @@ _LOGGER = logging.getLogger(__name__)
 _SleepFn = Callable[[float], Awaitable[None]]
 
 # docs/01-data-sources.md §3 "Escala PERIL_M / PERILL" + feature-spec §3.8.
+# Wording matches Interior's own "Nivells del Pla Alfa" legend
+# (interior.gencat.cat/.../pla-alfa/index.html), not the color-derived guess
+# this used to have -- there is no "no risk" level 0 in the real scale.
 NIVELL_TEXTS: dict[int, str] = {
-    0: "Sense risc",
-    1: "Baix",
-    2: "Moderat",
-    3: "Alt",
+    0: "Baix",
+    1: "Moderat",
+    2: "Alt",
+    3: "Molt alt",
     4: "Extrem",
 }
 _UNKNOWN_NIVELL_TEXT = "Desconegut"

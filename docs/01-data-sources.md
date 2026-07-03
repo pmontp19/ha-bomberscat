@@ -252,14 +252,18 @@ Geometria: polígon comarcal.
 
 > Aquesta és la millor font per verificar "estem mirant dades d'avui a les 9:30h o d'ahir?".
 
-### Escala `PERIL_M` / `PERILL` (extreta del renderer)
+### Escala `PERIL_M` / `PERILL`
+
+Colors extrets del renderer; text oficial extret del panell "Nivells del Pla
+Alfa" del visor d'Interior (interior.gencat.cat/.../pla-alfa/index.html) —
+**no** hi ha cap nivell "sense risc", el 0 ja és "Perill baix".
 
 | Valor | Color | Nivell |
 | :---: | --- | --- |
-| 0 | blanc | Sense risc |
-| 1 | groc | Baix |
-| 2 | taronja | Moderat |
-| 3 | vermell | Alt |
+| 0 | blanc | Baix |
+| 1 | groc | Moderat |
+| 2 | taronja | Alt |
+| 3 | vermell | Molt alt |
 | 4 | vermell fosc | Extrem |
 
 **Aquesta escala substitueix directament la RCM 1–5 d'IPMA que fa servir Pyrovigil.** Té 5 nivells (0–4) i ens dona el perill **del municipi concret de l'usuari**, no pas una estimació regional com el GIF d'Agricultura.
@@ -279,7 +283,7 @@ Resposta verificada avui: Barcelona, PERIL_M=0 (no estem en campanya activa enca
 
 1. Lookup del `CODIMUNI` de `zone.home` fent un `ST_Contains` del polígon sobre lat/lon de l'usuari.
 2. Caching diari: el Pla Alfa s'actualitza a 00:00 i 9:30h → no cal polling freqüent.
-3. Exposar `sensor.incendiscat_fire_risk` = `PERIL_M` del municipi + `binary_sensor.incendiscat_high_risk` quan `≥ 3`.
+3. Exposar `sensor.incendiscat_fire_risk` = `PERIL_M` del municipi + `binary_sensor.incendiscat_high_risk` quan `≥ 2` ("Alt").
 4. Opcional: predir demà amb el servei `_Dema_`.
 
 ---

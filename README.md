@@ -37,7 +37,7 @@ El flux de configuració té dos passos:
 
 2. **Filtres i sondeig** — subtipus a incloure (`VF`/`VA`/`VU`, per defecte només forestal), fases considerades "actives" (per defecte `Actiu`+`Estabilitzat`), interval de sondeig en minuts (1–60, per defecte 5) i nombre mínim de vehicles per considerar un incident.
 
-Un cop configurada, **Configuració → Dispositius i serveis → Incendis Catalunya → Configurar** obre les opcions: els mateixos filtres més el **llindar de risc alt** (0–4 del Pla Alfa, per defecte 3 = Alt).
+Un cop configurada, **Configuració → Dispositius i serveis → Incendis Catalunya → Configurar** obre les opcions: els mateixos filtres més el **llindar de risc alt** (0–4 del Pla Alfa, per defecte 2 = Alt).
 
 Per moure la ubicació vigilada (no els filtres) feu servir **Reconfigurar** a la mateixa integració, que reobre el pas 1.
 
