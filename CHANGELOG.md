@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.1](https://github.com/pmontp19/ha-incendiscat/compare/ha-incendiscat-v0.3.0...ha-incendiscat-v0.3.1) (2026-07-03)
+
+
+### Features
+
+* add local brand icon via Brands Proxy API ([76573f3](https://github.com/pmontp19/ha-incendiscat/commit/76573f312e62c71624f5936030db1c3efe499f57))
+
+
+### Bug Fixes
+
+* correct Pla Alfa risk-level labels and default high-risk threshold ([d677f5c](https://github.com/pmontp19/ha-incendiscat/commit/d677f5c9740cf90af7f09fdbcb43159b715a2962))
+* resolve unresolved [%key:...%] translation placeholders ([64332c5](https://github.com/pmontp19/ha-incendiscat/commit/64332c5c31945fce60af82532f36fd7f5a2819c7))
+* treat out-of-range Pla Alfa tomorrow level as unpublished ([7f0abdd](https://github.com/pmontp19/ha-incendiscat/commit/7f0abdd7e9e8523625ff86a4c586514132b59643))
+* use live Pla Alfa municipal layer for today's fire risk ([9766de5](https://github.com/pmontp19/ha-incendiscat/commit/9766de582c5e24ee35209c7ee4317bcdb8f1abed))
+
+
+### Documentation
+
+* clarify Pla Alfa layer freshness, tomorrow sentinel, safety labels ([6c4c57a](https://github.com/pmontp19/ha-incendiscat/commit/6c4c57aa7b16f7f6228d92d1753653a0ad3e96a7))
+
 ## [0.3.0](https://github.com/pmontp19/ha-incendiscat/compare/ha-incendiscat-v0.2.0...ha-incendiscat-v0.3.0) (2026-07-02)
 
 
