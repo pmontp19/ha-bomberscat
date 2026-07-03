@@ -137,7 +137,7 @@ Sumatori de `ACT_NUM_VEH` dels incendis en seguiment. State: enter ≥ 0. Attrib
 
 ### 3.8 `sensor.incendiscat_fire_risk` ✅ (font confirmada: Pla Alfa)
 
-State: nivell de perill Pla Alfa del municipi de `zone.home`, escala **0–4** (extreta de `PERIL_M` del FeatureServer `Pla_Alfa_Municipal_Avui_FL_2_view`).
+State: nivell de perill Pla Alfa del municipi de `zone.home`, escala **0–4** (extreta de `PERIL_M` del FeatureServer `Pla_Alfa_Municipal_Avui_FL_alternatiu_VW` — la `_FL_2_view` està congelada, vegeu `docs/01-data-sources.md`).
 
 Attributes:
 - `nivell_text`: "Baix" / "Moderat" / "Alt" / "Molt alt" / "Extrem" (text oficial del panell "Nivells del Pla Alfa" d'Interior — no hi ha nivell "sense risc")
@@ -157,6 +157,12 @@ Attributes (quan `on`): `nearest_act_num`, `nearest_distance_km`, `nearest_munic
 ### 3.10 `binary_sensor.incendiscat_high_risk` ✅
 
 `on` si `sensor.incendiscat_fire_risk` ≥ llindar configurat (default 2 = Alt, equivalent a Pla Alfa taronja). Dispara automacions matinals ("avui risc alt, no encenguis foc").
+
+#### Nota — etiqueta "Segur/Insegur" i relació amb `fire_risk`
+
+Tots dos binary sensors (`fire_nearby`, `high_risk`) tenen `device_class = SAFETY`, així que HA core en renderitza l'estat com **Segur** (`off`) / **Insegur** (`on`) — no són strings nostres i no es poden canviar sense tocar el `device_class` o el nom de l'entity. Això fa que a la UI es llegeixi "Risc alt d'incendi: Segur", que és semànticament confús (el nom afirma una condició i el valor la nega). És l'artefacte conegut de `SAFETY`; l'alternativa seria `device_class = PROBLEM` (→ "OK / Detectat"), avaluada i **de moment descartada** — es manté `SAFETY` per la icona d'escut i el precedent dels sensors de fum/gas de HA (vegeu el docstring de `binary_sensor.py`).
+
+`high_risk` i `sensor.incendiscat_fire_risk` (§3.8) són **la mateixa dada** (`PERIL_M` 0-4 del municipi de casa), presentada de dues maneres: `fire_risk` exposa el **nivell numèric** cru (0 Baix · 1 Moderat · 2 Alt · 3 Molt alt · 4 Extrem); `high_risk` n'és només l'**alarma booleana** per sobre del llindar configurat. Per això poden mostrar-se alhora com `fire_risk = 1` i `high_risk = Segur` (1 < 2): són coherents.
 
 ### 3.11 Diagnosi
 

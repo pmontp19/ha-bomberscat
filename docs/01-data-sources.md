@@ -215,7 +215,7 @@ S'han extret del `data?f=json` del visor. **Sis FeatureServers** públics, tots 
 
 | Servei | Què conté | Capa |
 | --- | --- | --- |
-| `Pla_Alfa_Municipal_Avui_FL_2_view` | Perill Pla Alfa per municipi — **avui** | `/0` |
+| `Pla_Alfa_Municipal_Avui_FL_alternatiu_VW` | Perill Pla Alfa per municipi — **avui** | `/0` |
 | `Pla_Alfa_Comarcal_Avui_FL_VW` | Perill Pla Alfa per comarca — **avui** | `/1` |
 | `tancaments_pla_alfa_avui_VW` | Tancaments de carreteres/vies — **avui** | `/2` |
 | `pla_alfa_municipal_dema_FL_VW` | Perill Pla Alfa per municipi — **demà** | `/5` |
@@ -224,7 +224,21 @@ S'han extret del `data?f=json` del visor. **Sis FeatureServers** públics, tots 
 
 Capacitats (igual que el FeatureServer dels Bombers): `Query`, GeoJSON/JSON/PBF, paginació 2000, suporta estadístiques, EPSG:25831 nadiu però admet `outSR=4326`.
 
-### Schema `Pla_Alfa_Municipal_Avui_FL_2_view` (el més útil)
+> ⚠️ **Avui municipal — dues views, una morta.** L'org exposa dues views de la
+> mateixa capa `pla_alfa_municipal_avui_wgs84`: `Pla_Alfa_Municipal_Avui_FL_2_view`
+> i `Pla_Alfa_Municipal_Avui_FL_alternatiu_VW`. La `_FL_2_view` **va deixar
+> d'actualitzar-se** (observada congelada a valors d'hivern del 2025-12-15, tot
+> 0-1) mentre `_FL_alternatiu_VW` segueix l'actualització diària ~09:30 del visor
+> oficial. Fem servir `_FL_alternatiu_VW`. Si els nivells tornen a semblar
+> obsolets, comprova `editingInfo.lastEditDate` de la view triada.
+>
+> **Demà municipal publica a les 14:30h.** Fins llavors la capa demà retorna un
+> `PERIL_M=5` sentinel (fora de l'escala 0-4) a *tots* els municipis i el visor
+> oficial els deixa sense pintar ("El mapa del Pla Alfa previst per demà
+> s'actualitzarà a les 14:30h"). La integració tracta qualsevol valor de demà
+> fora de 0-4 com a "encara no publicat" (`perill_dema=None`).
+
+### Schema `Pla_Alfa_Municipal_Avui_FL_alternatiu_VW` (el més útil)
 
 Geometria: **polígon municipal** WGS84.
 
@@ -271,7 +285,7 @@ Alfa" del visor d'Interior (interior.gencat.cat/.../pla-alfa/index.html) —
 ### Exemple de query (perill del municipi de l'usuari)
 
 ```
-GET .../Pla_Alfa_Municipal_Avui_FL_2_view/FeatureServer/0/query
+GET .../Pla_Alfa_Municipal_Avui_FL_alternatiu_VW/FeatureServer/0/query
     ?where=CODIMUNI='080193'              ← Barcelona
     &outFields=NOMMUNI,PERIL_M,NOMCOMAR
     &f=geojson
@@ -444,7 +458,7 @@ BASE = https://services7.arcgis.com/ZCqVt1fRXwwK6GF4/arcgis/rest/services
 BOMBERS_LIVE = {BASE}/ACTUACIONS_URGENTS_online_PRO_AMB_FASE_VIEW/FeatureServer/0
 
 # Pla Alfa (perill per municipi/comarca, polígons, avui i demà)
-PLA_ALFA_MUNI_AVUI = {BASE}/Pla_Alfa_Municipal_Avui_FL_2_view/FeatureServer/0
+PLA_ALFA_MUNI_AVUI = {BASE}/Pla_Alfa_Municipal_Avui_FL_alternatiu_VW/FeatureServer/0
 PLA_ALFA_COM_AVUI  = {BASE}/Pla_Alfa_Comarcal_Avui_FL_VW/FeatureServer/1
 PLA_ALFA_MUNI_DEMA = {BASE}/pla_alfa_municipal_dema_FL_VW/FeatureServer/5
 PLA_ALFA_COM_DEMA  = {BASE}/Pla_Alfa_Comarcal_Dema_FL_VW/FeatureServer/4
