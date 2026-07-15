@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.2](https://github.com/pmontp19/ha-incendiscat/compare/ha-incendiscat-v0.3.1...ha-incendiscat-v0.3.2) (2026-07-15)
+
+
+### Features
+
+* add minimum incident age filter before tracking fires ([edec7cb](https://github.com/pmontp19/ha-incendiscat/commit/edec7cb44d0d3c6fdae6237930c252cc95e525d2))
+* add minimum incident age filter before tracking fires ([2145e22](https://github.com/pmontp19/ha-incendiscat/commit/2145e2202d594366e8868226e41561406cb6e9b1))
+
+
+### Documentation
+
+* fix entity_id examples in README to match Catalan-instance slugs ([199de56](https://github.com/pmontp19/ha-incendiscat/commit/199de569fbc42d5f3293c234763438ad87c7d10c))
+
 ## [0.3.1](https://github.com/pmontp19/ha-incendiscat/compare/ha-incendiscat-v0.3.0...ha-incendiscat-v0.3.1) (2026-07-03)
 
 
